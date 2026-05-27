@@ -4,8 +4,6 @@
 
 A live diagnostics sandbox for OpenAI title embeddings. Builds an NxN cosine similarity matrix across 35+ job titles and surfaces five systematic failure modes — with cosine scores for each.
 
-<img src="network-graph.svg" alt="Embedding failure network graph" />
-
 ## What This Exposes
 
 | Failure Pattern | How This Project Surfaces It |
@@ -33,43 +31,28 @@ A live diagnostics sandbox for OpenAI title embeddings. Builds an NxN cosine sim
 
 #### 🔤 Acronym Blindspot
 `CRO` is ambiguous across four expansions — the embedding averages across meanings and collapses into noise. Any pipeline that skips acronym expansion will systematically fail to match C-suite roles.
-
-| Pair | Score | Note |
-|---|---|---|
-| *Chief Revenue Officer* vs. other executive titles | **0.50+** | Expanded form scores normally |
-| *CRO* vs. *VP of Sales* | **0.24** | *Same role, acronym form — lower than unrelated Software Engineer (**0.34**)* |
+- *Chief Revenue Officer* vs. other executive titles → **0.50+**
+- *CRO* (same role, acronym form) → **0.16–0.41** — scores just **0.24** against VP of Sales, while unrelated *Software Engineer* (**0.34**) scores higher
 
 #### 🔡 Syntactic Format Sensitivity
 The model clusters by grammatical pattern as much as by meaning — `"VP of X"` titles score higher with each other than with semantically equivalent `"X VP"` titles.
-
-| Pair | Score | Note |
-|---|---|---|
-| *VP of Engineering* ↔ *VP of Finance* | **0.74** | *Same format, different dept* |
-| *VP of Engineering* ↔ *Finance VP* | **0.55** | *Different format, different dept* |
+- *VP of Engineering* ↔ *VP of Finance* (same format, different dept) → **0.74**
+- *VP of Engineering* ↔ *Finance VP* (different format, different dept) → **0.55**
 
 #### 🏢 Cross-Departmental Over-Similarity
 The model over-indexes on seniority tokens like `VP`, collapsing functional boundaries between unrelated departments.
-
-| Pair | Score | Note |
-|---|---|---|
-| *VP of Sales* ↔ *VP of Marketing* | **0.84** | *Different dept — higher than many same-title word-order variants* |
+- *VP of Sales* ↔ *VP of Marketing* → **0.84** — higher than many same-title word-order variants
 
 #### 📊 Seniority Conflation
 VP and Director are separated by the same margin as VPs across departments — a **0.05 delta** is the only thing between a seniority boundary and a departmental one.
-
-| Pair | Score | Note |
-|---|---|---|
-| *VP of Engineering* ↔ *Director of Engineering* | **0.79** | *Same dept, different level* |
-| *VP of Engineering* ↔ *VP of Finance* | **0.74** | *Same level, different dept* |
+- *VP of Engineering* ↔ *Director of Engineering* (same dept, different level) → **0.79**
+- *VP of Engineering* ↔ *VP of Finance* (same level, different dept) → **0.74**
 
 #### 🌀 Functional Title Drift
 Non-canonical titles drift from their formal equivalents. `VP` and `Director` anchor embeddings toward executive space; titles without those tokens drift to a weak centroid.
-
-| Pair | Score | Note |
-|---|---|---|
-| *Revenue Leader* ↔ *VP of Sales* | **0.54** | *Same role — VP of Marketing (different dept) scores **0.84** against the same title* |
-| *Head of People* ↔ *VP of HR* | **0.60** | *Same function, same level* |
-| *Sales Principal* vs. cross-domain VP titles | **< 0.40** | *Despite seniority level 4* |
+- *Revenue Leader* ↔ *VP of Sales* → **0.54** — same role; *VP of Marketing* (different dept) scores **0.84** against the same title
+- *Head of People* ↔ *VP of HR* → **0.60** — same function, same level
+- *Sales Principal* vs. cross-domain VP titles → **< 0.40** despite seniority level 4
 
 ## Conclusion
 Raw embeddings provide a strong baseline for functional grouping but fail at **precise entity resolution** and **seniority mapping**. The five failure modes above are not edge cases — they reflect systematic gaps that appear whenever titles deviate from a canonical `"[Level] of [Department]"` format. A production title-matching system needs at minimum: acronym expansion, title normalization, and a seniority signal that does not rely on the embedding alone.
@@ -102,4 +85,4 @@ npm run clear   # wipe all vector data (useful for resetting to a clean state)
 ---
 
 <img width="1484" height="1176" alt="image" src="https://github.com/user-attachments/assets/e23f3615-a301-4f1f-a6c7-8aeee4bf0ef7" />
-*Full NxN cosine similarity matrix — all 46 job titles*
+*Full dashboard view*

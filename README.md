@@ -30,7 +30,7 @@ The dashboard is fully interactive:
 
 ## Screenshots 
 <img width="862" height="482" alt="image" src="https://github.com/user-attachments/assets/639c54a1-7fa0-474e-956e-cbb89ed5f979" />
-<img width="1179" height="625" alt="image" src="https://github.com/user-attachments/assets/dcec6a52-77bb-4bd2-b99e-3dd0d791a467" />
+<img width="979" height="387" alt="image" src="https://github.com/user-attachments/assets/158ee540-cc36-4409-86cf-4205f11c9f2f" />
 *Cosine similarity matrix (left) · Failure mode breakdown (right)*
 
 ## Key Findings

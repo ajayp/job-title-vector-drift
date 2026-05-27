@@ -1,41 +1,22 @@
-# Embedding Failure Lab
-
-> Where OpenAI title embeddings break — and why.
+# Embedding Blind Spots — Five ways OpenAI embeddings distort job titles.
 
 ![Model](https://img.shields.io/badge/model-text--embedding--3--small-blue) ![Titles](https://img.shields.io/badge/titles-35%2B-green) ![Metric](https://img.shields.io/badge/metric-cosine%20similarity-orange)
 
-A live diagnostics sandbox for OpenAI title embeddings — built to expose where embeddings break: 
-- ambiguous acronyms like `CRO`
-- over-similarity across `VP` titles
-- seniority collapse between `Director` and `VP` 
-- drift for non-canonical labels like `Revenue Leader`.
-
-- Builds a live cosine-similarity matrix across 35+ titles, algorithmically detects where the model breaks down, and surfaces those failures directly in the UI.
-
-- The **Embedding Map** tab renders a 2D PCA scatter plot of the full title space, so you can visually see how clusters form and where outliers drift.
-
-<img width="862" height="482" alt="image" src="https://github.com/user-attachments/assets/639c54a1-7fa0-474e-956e-cbb89ed5f979" />
-<img width="1179" height="625" alt="image" src="https://github.com/user-attachments/assets/dcec6a52-77bb-4bd2-b99e-3dd0d791a467" />
-
-
-*Cosine similarity matrix (left) · Failure mode breakdown (right)*
+A live diagnostics sandbox for OpenAI title embeddings. Builds an NxN cosine similarity matrix across 35+ job titles and surfaces five systematic failure modes — with exact cosine scores for each.
 
 ## What This Exposes
 
-| Concept | How This Project Surfaces It |
+| Failure Pattern | How This Project Surfaces It |
 |---|---|
-| **Semantic drift** | Functional title drift — titles without anchor tokens like `VP` or `Director` drift away from their expected cluster, measurably quantified per title |
-| **Over-triggering** | Cross-departmental over-similarity — the model produces false-positive matches (`VP of Sales` ↔ `VP of Marketing` at **0.84**) that would cause incorrect results in any threshold-based matching pipeline |
-| **Trust collapse at scale** | Seniority conflation — a **0.05 delta** separates a seniority boundary from a departmental one; a system calibrated on small data would fail systematically across thousands of titles |
-| **Representation bias** | Token gravity — high-frequency tokens (`VP`, `Director`) dominate the embedding space, causing unconventional titles to misrepresent their actual seniority and function |
-| **Input normalisation** | Acronym blindspot — `CRO` is ambiguous (`Chief Revenue Officer? Chief Risk Officer? Contract Research Org?`) so the embedding averages across meanings and collapses to **0.16–0.41**, while `Chief Revenue Officer` scores **0.50+** — proving that acronym expansion before embedding is mandatory |
+| **Functional Title Drift** | Titles without anchor tokens like `VP` or `Director` drift away from their expected cluster, measurably quantified per title |
+| **Cross-Departmental Over-Similarity** | The model produces false-positive matches (`VP of Sales` ↔ `VP of Marketing` at **0.84**) that would cause incorrect results in any threshold-based matching pipeline |
+| **Seniority Conflation** | A **0.05 delta** separates a seniority boundary from a departmental one; a system calibrated on small data would fail systematically across thousands of titles |
+| **Syntactic Format Sensitivity** | The model clusters by surface form as much as by meaning — `"VP of X"` titles score higher with each other than with semantically equivalent `"X VP"` titles (**0.74** vs **0.55**) |
+| **Acronym Blindspot** | `CRO` is ambiguous (`Chief Revenue Officer? Chief Risk Officer? Contract Research Org?`) so the embedding averages across meanings and collapses to **0.16–0.41**, while `Chief Revenue Officer` scores **0.50+** — proving that acronym expansion before embedding is mandatory |
 
-## Methodology
-- **Model:** OpenAI text-embedding-3-small
-- **Metric:** Cosine Similarity [0.0 - 1.0]
-- **Dataset:** 35+ professional job titles across Engineering, Finance, HR, Legal, Marketing, and Sales.
-
-*All scores are properties of `text-embedding-3-small`'s vector space — switching models requires full re-embedding, as a different model may resolve some failure modes while introducing others.*
+<img width="862" height="482" alt="image" src="https://github.com/user-attachments/assets/639c54a1-7fa0-474e-956e-cbb89ed5f979" />
+<img width="1179" height="625" alt="image" src="https://github.com/user-attachments/assets/dcec6a52-77bb-4bd2-b99e-3dd0d791a467" />
+*Cosine similarity matrix (left) · Failure mode breakdown (right)*
 
 ## Key Findings
 
@@ -76,7 +57,6 @@ Non-canonical titles drift from their formal equivalents. `VP` and `Director` an
 ## Conclusion
 Raw embeddings provide a strong baseline for functional grouping but fail at **precise entity resolution** and **seniority mapping**. The five failure modes above are not edge cases — they reflect systematic gaps that appear whenever titles deviate from a canonical `"[Level] of [Department]"` format. A production title-matching system needs at minimum: acronym expansion, title normalization, and a seniority signal that does not rely on the embedding alone.
 
-
 ## Quick Start
 
 **No API key needed** — embedding vectors are pre-calculated and committed. The matrix loads immediately.
@@ -95,7 +75,14 @@ npm run seed    # generate embeddings for any titles with empty vectors
 npm run clear   # wipe all vector data (useful for resetting to a clean state)
 ```
 
+## Methodology
+- **Model:** OpenAI text-embedding-3-small
+- **Metric:** Cosine Similarity [0.0 - 1.0]
+- **Dataset:** 35+ professional job titles across Engineering, Finance, HR, Legal, Marketing, and Sales.
+
+*All scores are properties of `text-embedding-3-small`'s vector space — switching models requires full re-embedding, as a different model may resolve some failure modes while introducing others.*
+
 ---
 
 <img width="1484" height="1176" alt="image" src="https://github.com/user-attachments/assets/e23f3615-a301-4f1f-a6c7-8aeee4bf0ef7" />
-****
+*Full dashboard view*

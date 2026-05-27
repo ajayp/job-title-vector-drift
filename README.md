@@ -1,10 +1,12 @@
 # Embedding Blind Spots — Five ways OpenAI embeddings distort job titles.
 
-![Model](https://img.shields.io/badge/model-text--embedding--3--small-blue) ![Titles](https://img.shields.io/badge/titles-35%2B-green) ![Metric](https://img.shields.io/badge/metric-cosine%20similarity-orange)
+![Model](https://img.shields.io/badge/model-text--embedding--3--small-blue) ![Titles](https://img.shields.io/badge/titles-46-green) ![Metric](https://img.shields.io/badge/metric-cosine%20similarity-orange) ![Stack](https://img.shields.io/badge/stack-Next.js%2014%20%2F%20TypeScript-black)
 
-A live diagnostics sandbox for OpenAI title embeddings. Builds an NxN cosine similarity matrix across 35+ job titles and surfaces five systematic failure modes — with cosine scores for each.
+A live diagnostics sandbox for OpenAI title embeddings. Builds an NxN cosine similarity matrix across 46 job titles and surfaces five systematic failure modes — with cosine scores for each.
 
 <img width="567" height="455" alt="image" src="https://github.com/user-attachments/assets/88fb24f4-08a4-43ee-84dc-ed8b0b189de9" />
+
+*Network graph — each node is a title, edge thickness scales with cosine similarity*
 
 ## What This Exposes
 
@@ -15,6 +17,16 @@ A live diagnostics sandbox for OpenAI title embeddings. Builds an NxN cosine sim
 | **Seniority Conflation** | A **0.05 delta** separates a seniority boundary from a departmental one; a system calibrated on small data would fail systematically across thousands of titles |
 | **Syntactic Format Sensitivity** | The model clusters by surface form as much as by meaning — `"VP of X"` titles score higher with each other than with semantically equivalent `"X VP"` titles (**0.74** vs **0.55**) |
 | **Acronym Blindspot** | `CRO` is ambiguous (`Chief Revenue Officer? Chief Risk Officer? Contract Research Org?`) so the embedding averages across meanings and collapses to **0.16–0.41**, while `Chief Revenue Officer` scores **0.50+** — proving that acronym expansion before embedding is mandatory |
+
+## Dashboard
+
+The dashboard is fully interactive:
+
+- **Hover any cell** in the similarity matrix to see the exact cosine score for that pair
+- **Toggle partition modes** (seniority / department) to zero out cross-boundary similarities and see how a hard-partitioned system would behave vs. raw embeddings
+- **Failure panel** lists every detected anomaly with the pair, score, and failure type
+
+> **Reading the scores:** production title-matching pipelines typically use a threshold of ~0.75 to flag a match. Scores above that between titles from *different* departments or seniority levels are false positives. That's why a 0.84 between `VP of Sales` and `VP of Marketing` is the key finding — it's above the typical match threshold.
 
 ## Screenshots 
 <img width="862" height="482" alt="image" src="https://github.com/user-attachments/assets/639c54a1-7fa0-474e-956e-cbb89ed5f979" />
@@ -78,10 +90,17 @@ npm run seed    # generate embeddings for any titles with empty vectors
 npm run clear   # wipe all vector data (useful for resetting to a clean state)
 ```
 
+## Tech Stack
+
+- **Framework:** Next.js 14 (App Router)
+- **Language:** TypeScript
+- **Embeddings:** OpenAI `text-embedding-3-small` via REST API
+- **Analytics:** custom cosine similarity + PCA — no ML library dependency
+
 ## Methodology
 - **Model:** OpenAI text-embedding-3-small
 - **Metric:** Cosine Similarity [0.0 - 1.0]
-- **Dataset:** 35+ professional job titles across Engineering, Finance, HR, Legal, Marketing, and Sales.
+- **Dataset:** 46 professional job titles across Engineering, Finance, HR, Legal, Marketing, and Sales.
 
 *All scores are properties of `text-embedding-3-small`'s vector space — switching models requires full re-embedding, as a different model may resolve some failure modes while introducing others.*
 

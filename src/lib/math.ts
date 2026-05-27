@@ -41,7 +41,7 @@ export type FailureType = 'acronym' | 'drift' | 'crossdept' | 'conflation' | 'fo
 export const FAILURE_COLORS: Record<FailureType, string> = {
   acronym:    '#f59e0b',
   drift:      '#eab308',
-  crossdept:  '#f43f5e',
+  crossdept:  '#ff2d55',
   conflation: '#8b5cf6',
   format:     '#06b6d4',
 };

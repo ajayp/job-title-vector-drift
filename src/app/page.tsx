@@ -285,7 +285,8 @@ export default function Home() {
 
             {uniqueLibrary.length > 0 && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <span style={{ fontSize: 12, color: '#64748b' }}>Low</span>
+                <span style={{ fontSize: 12, color: '#64748b' }}>Cosine similarity</span>
+                <span style={{ fontSize: 12, color: '#475569' }}>Low</span>
                 <div
                   style={{
                     width: 160,
@@ -346,10 +347,7 @@ export default function Home() {
                           <span style={{ fontSize: 13, fontWeight: 600, color: '#e2e8f0' }}>
                             {FAILURE_LABELS[type].split(' — ')[0]}
                           </span>
-                          <span style={{ fontSize: 11, color: '#475569' }}>
-                            — colored borders on matrix cells, dots on role labels
-                          </span>
-                        </div>
+                          </div>
                         <p style={{ fontSize: 12, color: '#64748b', margin: 0, paddingLeft: 16 }}>
                           {FAILURE_DESCRIPTIONS[type]}
                         </p>
@@ -482,7 +480,7 @@ export default function Home() {
                                 outline: isHighlighted
                                   ? '2px solid #ffffff'
                                   : cellFailure
-                                  ? `2px solid ${FAILURE_COLORS[cellFailure]}`
+                                  ? `3px solid ${FAILURE_COLORS[cellFailure]}`
                                   : undefined,
                                 outlineOffset: '-2px',
                                 position: isHighlighted ? 'relative' : undefined,

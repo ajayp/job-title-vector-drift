@@ -106,11 +106,6 @@ npm run clear   # wipe all vector data (useful for resetting to a clean state)
 
 ---
 
-<img width="1484" height="1176" alt="image" src="https://github.com/user-attachments/assets/e23f3615-a301-4f1f-a6c7-8aeee4bf0ef7" />
-*Full dashboard view*
-
----
-
 ## Background
 
 ### What are embeddings?
@@ -128,3 +123,6 @@ similarity = (A · B) / (|A| × |B|)
 ### Why does this matter for job titles?
 
 Title matching is a hard problem because the same role can be written dozens of ways (`VP of Sales`, `Sales VP`, `Head of Revenue`, `CRO`). Embedding-based matching is the natural tool — but only if the model encodes *meaning* consistently. This project shows that `text-embedding-3-small` encodes **surface form** as strongly as meaning, which breaks any pipeline that treats raw cosine similarity as a reliable match signal without preprocessing.
+
+<img width="2032" height="949" alt="image" src="https://github.com/user-attachments/assets/477da0cd-4cb8-41b3-9d09-fd31eab041b3" />
+

@@ -20,11 +20,11 @@ A live diagnostics sandbox for OpenAI title embeddings. Builds an NxN cosine sim
 | **Syntactic Format Sensitivity** | The model clusters by surface form as much as by meaning — `"VP of X"` titles score higher with each other than with semantically equivalent `"X VP"` titles (**0.74** vs **0.55**) |
 | **Acronym Blindspot** | `CRO` is ambiguous (`Chief Revenue Officer? Chief Risk Officer? Contract Research Org?`) so the embedding averages across meanings and collapses to **0.16–0.41**, while `Chief Revenue Officer` scores **0.50+** — proving that acronym expansion before embedding is mandatory |
 
-### Dashboard
+## Dashboard
 
-The dashboard has three tabs:
+### Failure Analysis
+An NxN cosine similarity heatmap across all 46 titles. Hover any cell to see the exact score. Toggle partition modes (seniority / department) to zero out cross-boundary similarities and compare raw embeddings against a hard-partitioned system. The failure panel lists every detected anomaly with the pair, score, and failure type.
 
-**Failure Analysis** — the primary view. An NxN cosine similarity heatmap across all 46 titles; hover any cell to see the exact score. Toggle partition modes (seniority / department) to zero out cross-boundary similarities and compare raw embeddings against a hard-partitioned system. The failure panel below lists every detected anomaly with the pair, score, and failure type.
 <details><summary>📸 Failure mode breakdown</summary>
 <img width="979" height="487" alt="Failure mode breakdown" src="screenshots/failure-modes.jpg" />
 </details>
@@ -35,13 +35,15 @@ The dashboard has three tabs:
 *Cosine similarity matrix (left) · Failure mode breakdown (right)*
 </details>
 
-**Seniority Gravity** — titles orbit concentric rings by seniority level (L1 IC → L4 VP/C-Suite). Edges connect pairs with cosine similarity ≥ 0.70. Red edges are cross-department false positives — the model treats seniority tokens like `VP` as gravitational anchors, pulling unrelated departments into the same orbit. Purple edges mark seniority conflation between adjacent rings. Hover any dot to see its title and connections.
+### Seniority Gravity
+Titles orbit concentric rings by seniority level (L1 IC → L4 VP/C-Suite). Edges connect pairs with cosine similarity ≥ 0.70. Red edges are cross-department false positives — the model treats seniority tokens like `VP` as gravitational anchors, pulling unrelated departments into the same orbit. Purple edges mark seniority conflation between adjacent rings. Hover any dot to see its title and connections.
 
-<details><summary>📸 Seniority Gravity screenshot</summary>
+<details><summary>📸 Seniority Gravity</summary>
 <img width="1440" height="1100" alt="Seniority Gravity — titles orbit concentric rings by seniority level, edges connect similar pairs" src="screenshots/seniority-gravity.png" />
 </details>
 
-**Embedding Map** — a 2D PCA scatter plot of all 46 title vectors, computed client-side via power-iteration PCA. Shows how the model actually clusters titles in its vector space, independent of the similarity scores.
+### Embedding Map
+A 2D PCA scatter plot of all 46 title vectors, computed client-side via power-iteration PCA. Shows how the model actually clusters titles in its vector space, independent of the similarity scores.
 
 ---
 

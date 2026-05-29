@@ -26,10 +26,8 @@ The dashboard has three tabs:
 
 **Failure Analysis** — the primary view. An NxN cosine similarity heatmap across all 46 titles; hover any cell to see the exact score. Toggle partition modes (seniority / department) to zero out cross-boundary similarities and compare raw embeddings against a hard-partitioned system. The failure panel below lists every detected anomaly with the pair, score, and failure type.
 <details><summary>📸 Failure mode breakdown</summary>
-<img width="979" height="387" alt="Failure mode breakdown" src="screenshots/failure-modes.jpg" />
+<img width="979" height="487" alt="Failure mode breakdown" src="screenshots/failure-modes.jpg" />
 </details>
-
-> **Reading the scores:** production title-matching pipelines typically use a threshold of ~0.75 to flag a match. Scores above that between titles from *different* departments or seniority levels are false positives. That's why a 0.84 between `VP of Sales` and `VP of Marketing` is the key finding — it's above the typical match threshold.
 
 <details><summary>📸 Cosine similarity matrix</summary>
 <img width="862" height="400" alt="Cosine similarity matrix" src="screenshots/heatmap-small.jpg" />
@@ -49,9 +47,9 @@ The dashboard has three tabs:
 
 ## Findings
 
-### Key Findings
+> **Reading the scores:** production title-matching pipelines typically use a threshold of ~0.75 to flag a match. Scores above that between titles from *different* departments or seniority levels are false positives. That's why a 0.84 between `VP of Sales` and `VP of Marketing` is the key finding — it's above the typical match threshold.
 
-#### Areas of Success
+### Areas of Success
 
 | Pair | Score | Signal |
 |---|---|---|

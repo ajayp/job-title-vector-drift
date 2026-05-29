@@ -16,6 +16,12 @@ const DEPT_COLORS: Record<string, string> = {
   Operations:  '#f97316',
   Sales:       '#06b6d4',
 };
+const RING_COLORS: Record<number, string> = {
+  1: '#64748b',
+  2: '#38bdf8',
+  3: '#a78bfa',
+  4: '#fbbf24',
+};
 
 interface JobTitle {
   id: number;
@@ -112,7 +118,8 @@ export default function Home() {
   const [highlighted, setHighlighted] = useState<[number, number] | null>(null);
   const [insightOpen, setInsightOpen] = useState(true);
   const [scatterHovered, setScatterHovered] = useState<number | null>(null);
-  const [activeTab, setActiveTab] = useState<'failures' | 'map'>('failures');
+  const [gravityHovered, setGravityHovered] = useState<number | null>(null);
+  const [activeTab, setActiveTab] = useState<'failures' | 'gravity' | 'map'>('failures');
 
   const uniqueLibrary = useMemo(() => {
     const map = new Map<string, JobTitle>();
@@ -166,6 +173,55 @@ export default function Home() {
     const sy = (v: number) => H - PAD - (v - yMin) / ySpan * (H - 2 * PAD);
     return { W, H, pts: raw.map(([x, y]) => [sx(x), sy(y)] as [number, number]) };
   }, [uniqueLibrary]);
+
+  const gravityData = useMemo(() => {
+    if (uniqueLibrary.length < 2) return null;
+    const W = 900, H = 840, CX = 450, CY = 420;
+    const RADII: Record<number, number> = { 1: 70, 2: 165, 3: 260, 4: 350 };
+    const LEVEL_LABELS: Record<number, string> = {
+      1: 'IC', 2: 'Senior / Mgr', 3: 'Director', 4: 'VP / C-Suite',
+    };
+    const THRESHOLD = 0.70;
+
+    // Group by seniority, sort within group by dept so same-dept nodes cluster together on ring
+    const byLevel = new Map<number, number[]>();
+    for (let i = 0; i < uniqueLibrary.length; i++) {
+      const s = uniqueLibrary[i].seniority;
+      if (!byLevel.has(s)) byLevel.set(s, []);
+      byLevel.get(s)!.push(i);
+    }
+    for (const indices of byLevel.values()) {
+      indices.sort((a, b) =>
+        uniqueLibrary[a].department.localeCompare(uniqueLibrary[b].department),
+      );
+    }
+
+    // Place nodes on rings
+    const positions = new Array(uniqueLibrary.length).fill(null) as ([number, number] | null)[];
+    for (const [level, indices] of byLevel) {
+      const r = RADII[level];
+      if (r == null) continue;
+      const n = indices.length;
+      for (let k = 0; k < n; k++) {
+        const angle = -Math.PI / 2 + (k / n) * 2 * Math.PI;
+        positions[indices[k]] = [CX + r * Math.cos(angle), CY + r * Math.sin(angle)];
+      }
+    }
+
+    // Collect edges, sorted weak→strong so strong edges render on top
+    const edges: { ri: number; ci: number; score: number; type?: FailureType }[] = [];
+    for (let ri = 0; ri < uniqueLibrary.length; ri++) {
+      for (let ci = ri + 1; ci < uniqueLibrary.length; ci++) {
+        const s = scores[ri][ci];
+        if (s >= THRESHOLD) {
+          edges.push({ ri, ci, score: s, type: cellFlags.get(`${ri},${ci}`) });
+        }
+      }
+    }
+    edges.sort((a, b) => a.score - b.score);
+
+    return { W, H, CX, CY, RADII, LEVEL_LABELS, THRESHOLD, positions, edges };
+  }, [uniqueLibrary, scores, cellFlags]);
 
   const insightExamples = useMemo(() => {
     type Example = { label: string; ri: number; ci: number; score: number };
@@ -230,7 +286,7 @@ export default function Home() {
 
   const titles = uniqueLibrary.map(p => p.rawTitle);
 
-  const tabStyle = (tab: 'failures' | 'map') => ({
+  const tabStyle = (tab: 'failures' | 'gravity' | 'map') => ({
     padding: '10px 0',
     marginRight: 32,
     background: 'none',
@@ -259,6 +315,9 @@ export default function Home() {
           <button style={tabStyle('failures')} onClick={() => setActiveTab('failures')}>
             Failure Analysis
           </button>
+          <button style={tabStyle('gravity')} onClick={() => setActiveTab('gravity')}>
+            Seniority Gravity
+          </button>
           <button style={tabStyle('map')} onClick={() => setActiveTab('map')}>
             Embedding Map
           </button>
@@ -267,37 +326,34 @@ export default function Home() {
         {/* Tab: Failure Analysis */}
         {activeTab === 'failures' && <>
           {/* Toolbar */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 40 }}>
-              <Toggle
-                checked={seniorityPartition}
-                onChange={setSeniorityPartition}
-                label="Seniority partition"
-                sub="(zero cross-level)"
-              />
-              <Toggle
-                checked={deptPartition}
-                onChange={setDeptPartition}
-                label="Department partition"
-                sub="(zero cross-dept)"
-              />
-            </div>
-
+          <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 32 }}>
+            <Toggle
+              checked={seniorityPartition}
+              onChange={setSeniorityPartition}
+              label="Seniority partition"
+              sub="(zero cross-level)"
+            />
+            <Toggle
+              checked={deptPartition}
+              onChange={setDeptPartition}
+              label="Department partition"
+              sub="(zero cross-dept)"
+            />
             {uniqueLibrary.length > 0 && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <span style={{ fontSize: 12, color: '#64748b' }}>Cosine similarity</span>
                 <span style={{ fontSize: 12, color: '#475569' }}>Low</span>
                 <div
                   style={{
-                    width: 160,
-                    height: 10,
+                    width: 100,
+                    height: 8,
                     flexShrink: 0,
                     borderRadius: 9999,
                     background: `linear-gradient(to right, ${cellColor(0)}, ${cellColor(0.5)}, ${cellColor(1)})`,
                   }}
                 />
                 <span style={{ fontSize: 12, color: '#64748b' }}>High</span>
-                <span style={{ fontSize: 12, color: '#475569', marginLeft: 8, fontVariantNumeric: 'tabular-nums' }}>
+                <span style={{ fontSize: 12, color: '#475569', marginLeft: 4, fontVariantNumeric: 'tabular-nums' }}>
                   {minScore.toFixed(2)}–{maxScore.toFixed(2)}
                 </span>
               </div>
@@ -325,12 +381,17 @@ export default function Home() {
                   letterSpacing: '0.08em',
                 }}
               >
-                <span>Failure Modes — click any example to highlight in matrix below</span>
-                <span style={{
-                  fontSize: 14,
-                  transition: 'transform 0.15s',
-                  transform: insightOpen ? 'rotate(0deg)' : 'rotate(-90deg)',
-                }}>▾</span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{
+                    color: '#f97316',
+                    fontSize: 18,
+                    lineHeight: 1,
+                    transition: 'transform 0.15s',
+                    transform: insightOpen ? 'rotate(0deg)' : 'rotate(-90deg)',
+                    display: 'inline-block',
+                  }}>▾</span>
+                  Failure Modes — click any example to highlight in matrix below
+                </span>
               </button>
 
               {insightOpen && (
@@ -403,7 +464,7 @@ export default function Home() {
                         <th
                           key={i}
                           className="sticky top-0 z-20 border-b border-r border-slate-700/40 bg-slate-900 p-0"
-                          style={{ width: 52, minWidth: 52, verticalAlign: 'bottom', position: 'relative' }}
+                          style={{ width: 40, minWidth: 40, verticalAlign: 'bottom', position: 'relative' }}
                         >
                           {titleFlags.get(i)?.[0] && (
                             <span
@@ -447,7 +508,7 @@ export default function Home() {
                       <tr key={ri}>
                         <th
                           className="sticky left-0 z-10 border-b border-r border-slate-700/40 bg-slate-900 px-5 text-left font-medium text-slate-300 whitespace-nowrap"
-                          style={{ height: 44, fontSize: 13 }}
+                          style={{ height: 36, fontSize: 12 }}
                         >
                           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                             {rowTitle}
@@ -468,8 +529,8 @@ export default function Home() {
                               data-highlighted={isHighlighted ? 'true' : undefined}
                               style={{
                                 backgroundColor: bg,
-                                width: 52,
-                                height: 44,
+                                width: 40,
+                                height: 36,
                                 textAlign: 'center',
                                 verticalAlign: 'middle',
                                 borderBottom: '1px solid rgba(148,163,184,0.07)',
@@ -493,7 +554,7 @@ export default function Home() {
                               {score > 0 && (
                                 <span
                                   style={{
-                                    fontSize: 10,
+                                    fontSize: 9,
                                     fontWeight: 700,
                                     color: t > 0.55 ? '#0f172a' : '#e2e8f0',
                                     userSelect: 'none',
@@ -512,6 +573,198 @@ export default function Home() {
               </div>
             </div>
           )}
+        </>}
+
+        {/* Tab: Seniority Gravity */}
+        {activeTab === 'gravity' && gravityData && <>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxWidth: 700 }}>
+            <p style={{ margin: 0, fontSize: 15, color: '#cbd5e1', lineHeight: 1.6 }}>
+              Titles orbit their seniority ring. Edges connect pairs with cosine&nbsp;similarity&nbsp;≥&nbsp;{gravityData.THRESHOLD.toFixed(2)}.
+            </p>
+            <p style={{ margin: 0, fontSize: 13, color: '#475569', lineHeight: 1.6 }}>
+              <span style={{ color: FAILURE_COLORS.crossdept }}>Red edges</span> are cross-department false positives —
+              the model treats seniority tokens like <em>VP</em> as gravitational anchors, pulling unrelated
+              departments into the same orbit. <span style={{ color: FAILURE_COLORS.conflation }}>Purple edges</span> mark
+              seniority conflation between adjacent rings. Hover any dot to see its title and connections.
+            </p>
+          </div>
+
+          <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
+            <div style={{ display: 'flex', gap: 24, alignItems: 'center', justifyContent: 'center', paddingTop: 70 }}>
+              <svg
+                viewBox={`0 0 ${gravityData.W} ${gravityData.H}`}
+                style={{ display: 'block', height: 805, width: 'auto', maxWidth: '72%' }}
+              >
+                {/* Ring outlines + labels */}
+                {([1, 2, 3, 4] as const).map((level, idx) => {
+                  const r = gravityData.RADII[level];
+                  // Stagger labels above the horizontal midline so they don't stack on one baseline
+                  const labelY = gravityData.CY - 8 - idx * 13;
+                  return (
+                    <g key={level}>
+                      <circle
+                        cx={gravityData.CX} cy={gravityData.CY} r={r}
+                        fill="none"
+                        stroke={RING_COLORS[level]}
+                        strokeWidth={level === 4 ? 1.5 : 1}
+                        strokeDasharray={level === 1 ? undefined : '5 4'}
+                      />
+                      {/* Tick from ring edge to label */}
+                      <line
+                        x1={gravityData.CX + r} y1={gravityData.CY}
+                        x2={gravityData.CX + r + 6} y2={labelY}
+                        stroke={RING_COLORS[level]} strokeWidth={0.75}
+                      />
+                      <text
+                        x={gravityData.CX + r + 9}
+                        y={labelY + 3}
+                        fontSize={10}
+                        fill={RING_COLORS[level]}
+                        dominantBaseline="middle"
+                        style={{ userSelect: 'none' }}
+                      >
+                        L{level}
+                      </text>
+                    </g>
+                  );
+                })}
+
+                {/* Edges — drawn weak→strong so high scores land on top */}
+                {gravityData.edges.map(({ ri, ci, score, type }) => {
+                  const pa = gravityData.positions[ri];
+                  const pb = gravityData.positions[ci];
+                  if (!pa || !pb) return null;
+                  const isAdj = gravityHovered === ri || gravityHovered === ci;
+                  const isOther = gravityHovered !== null && !isAdj;
+                  const t = (score - gravityData.THRESHOLD) / (1 - gravityData.THRESHOLD);
+                  const opacity = isOther ? 0.02 : isAdj ? 0.9 : t * 0.45 + 0.18;
+                  const sw = isAdj ? 2 : t * 2 + 0.6;
+                  const color = type ? FAILURE_COLORS[type] : '#475569';
+                  return (
+                    <line
+                      key={`${ri}-${ci}`}
+                      x1={pa[0]} y1={pa[1]}
+                      x2={pb[0]} y2={pb[1]}
+                      stroke={color}
+                      strokeWidth={sw}
+                      strokeOpacity={opacity}
+                    />
+                  );
+                })}
+
+                {/* Nodes */}
+                {uniqueLibrary.map((title, i) => {
+                  const pos = gravityData.positions[i];
+                  if (!pos) return null;
+                  const [x, y] = pos;
+                  const color = DEPT_COLORS[title.department] ?? '#94a3b8';
+                  const isHov = gravityHovered === i;
+                  const adjEdge = gravityHovered !== null ? gravityData.edges.find(
+                    e => (e.ri === i || e.ci === i) && (e.ri === gravityHovered || e.ci === gravityHovered),
+                  ) : undefined;
+                  const isAdj = !!adjEdge;
+                  const dimmed = gravityHovered !== null && !isHov && !isAdj;
+
+                  // Label: offset radially outward from center
+                  const dx = x - gravityData.CX, dy = y - gravityData.CY;
+                  const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+                  const OFFSET = 15;
+                  const lx = x + (dx / dist) * OFFSET;
+                  const ly = y + (dy / dist) * OFFSET;
+                  const anchor = dx >= 0 ? 'start' : 'end';
+
+                  return (
+                    <g
+                      key={i}
+                      style={{ cursor: 'default' }}
+                      onMouseEnter={() => setGravityHovered(i)}
+                      onMouseLeave={() => setGravityHovered(null)}
+                    >
+                      {/* Fat invisible hit target */}
+                      <circle cx={x} cy={y} r={14} fill="transparent" />
+                      <circle
+                        cx={x} cy={y}
+                        r={isHov ? 7 : 5}
+                        fill={color}
+                        fillOpacity={dimmed ? 0.12 : 0.85}
+                        stroke={isHov ? '#ffffff' : isAdj ? color : 'none'}
+                        strokeWidth={isHov ? 1.5 : 1}
+                      />
+                      {(isHov || isAdj) ? (
+                        <text
+                          x={lx} y={ly}
+                          fontSize={11}
+                          fill="#e2e8f0"
+                          textAnchor={anchor}
+                          dominantBaseline="middle"
+                          style={{ pointerEvents: 'none', userSelect: 'none' }}
+                        >
+                          {isHov ? (
+                            <>
+                              <tspan>{title.rawTitle}</tspan>
+                              <tspan x={lx} dy={14} fontSize={9} fill="#475569">↓ similarity from here</tspan>
+                            </>
+                          ) : (
+                            <>
+                              <tspan>{title.rawTitle}</tspan>
+                              <tspan fill="#64748b">{adjEdge ? ` · ${adjEdge.score.toFixed(2)}` : ''}</tspan>
+                            </>
+                          )}
+                        </text>
+                      ) : (
+                        <title>{title.rawTitle} · {title.department} · Level {title.seniority}</title>
+                      )}
+                    </g>
+                  );
+                })}
+              </svg>
+
+              {/* Legend */}
+              <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 20, paddingTop: 4 }}>
+                <div>
+                  <div style={{ fontSize: 10, color: '#475569', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 7 }}>Department</div>
+                  {Object.entries(DEPT_COLORS).map(([dept, color]) => (
+                    <div key={dept} style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 5 }}>
+                      <span style={{ width: 8, height: 8, borderRadius: '50%', background: color, flexShrink: 0, display: 'inline-block' }} />
+                      <span style={{ fontSize: 11, color: '#94a3b8' }}>{dept}</span>
+                    </div>
+                  ))}
+                </div>
+                <div>
+                  <div style={{ fontSize: 10, color: '#475569', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 7 }}>Edge type</div>
+                  {(['crossdept', 'conflation'] as FailureType[]).map(type => (
+                    <div key={type} style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 5 }}>
+                      <svg width={20} height={8} style={{ flexShrink: 0 }}>
+                        <line x1={0} y1={4} x2={20} y2={4} stroke={FAILURE_COLORS[type]} strokeWidth={1.5} />
+                      </svg>
+                      <span style={{ fontSize: 11, color: '#94a3b8' }}>
+                        {type === 'crossdept' ? 'Cross-dept' : 'Conflation'}
+                      </span>
+                    </div>
+                  ))}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                    <svg width={20} height={8} style={{ flexShrink: 0 }}>
+                      <line x1={0} y1={4} x2={20} y2={4} stroke="#475569" strokeWidth={1} />
+                    </svg>
+                    <span style={{ fontSize: 11, color: '#94a3b8' }}>Normal</span>
+                  </div>
+                </div>
+                <div>
+                  <div style={{ fontSize: 10, color: '#475569', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 7 }}>Seniority Ring</div>
+                  {([4, 3, 2, 1] as const).map(level => (
+                    <div key={level} style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 5 }}>
+                      <svg width={20} height={12} style={{ flexShrink: 0 }}>
+                        <circle cx={10} cy={6} r={5} fill="none" stroke={RING_COLORS[level]} strokeWidth={1}
+                          strokeDasharray={level === 1 ? undefined : '3 2'} />
+                      </svg>
+                      <span style={{ fontSize: 11, color: RING_COLORS[level], fontWeight: 500 }}>L{level}</span>
+                      <span style={{ fontSize: 11, color: '#475569' }}>{gravityData.LEVEL_LABELS[level]}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
         </>}
 
         {/* Tab: Embedding Map */}

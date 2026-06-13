@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//private/tmp/**)",
+      "Bash(node -e ' *)",
+      "Read(//tmp/**)",
+      "Bash(npm install *)",
+      "Bash(node -e \"require\\('playwright'\\)\")",
+      "Read(//Users/ajay/.claude/plans/**)"
+    ]
+  }
+}

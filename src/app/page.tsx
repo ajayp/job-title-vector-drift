@@ -16,6 +16,7 @@ const DEPT_COLORS: Record<string, string> = {
   Operations:  '#f97316',
   Sales:       '#06b6d4',
 };
+
 const RING_COLORS: Record<number, string> = {
   1: '#64748b',
   2: '#38bdf8',
@@ -35,11 +36,131 @@ function lerp(a: number, b: number, t: number) {
   return a + (b - a) * t;
 }
 
+// Navy → electric teal gradient
 function cellColor(t: number): string {
-  const h = Math.round(lerp(20, 30, t));
-  const s = Math.round(lerp(15, 92, t));
-  const l = Math.round(lerp(9, 58, t));
+  if (t <= 0) return '#030C1A';
+  const h = Math.round(lerp(215, 168, t));
+  const s = Math.round(lerp(65, 90, t));
+  const l = Math.round(lerp(8, 56, t));
   return `hsl(${h}, ${s}%, ${l}%)`;
+}
+
+const FAILURE_ORDER: FailureType[] = ['acronym', 'drift', 'crossdept', 'conflation', 'format'];
+
+// ─── Sub-components ──────────────────────────────────────────────────────────
+
+function StatBadge({ label, value }: { label: string; value: string }) {
+  return (
+    <div style={{
+      display: 'flex', flexDirection: 'column', alignItems: 'center',
+      padding: '6px 18px', borderLeft: '1px solid #0C1E38',
+    }}>
+      <span style={{
+        fontSize: 19, fontWeight: 700, color: '#1ED8C0',
+        fontFamily: 'var(--font-mono)', lineHeight: 1.1, letterSpacing: '-0.02em',
+      }}>
+        {value}
+      </span>
+      <span style={{
+        fontSize: 9, color: '#3D6880', textTransform: 'uppercase',
+        letterSpacing: '0.1em', fontWeight: 700, marginTop: 2,
+      }}>
+        {label}
+      </span>
+    </div>
+  );
+}
+
+function Toggle({
+  checked, onChange, label, sub,
+}: {
+  checked: boolean; onChange: (v: boolean) => void; label: string; sub: string;
+}) {
+  return (
+    <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', userSelect: 'none' }}>
+      <button
+        role="switch"
+        aria-checked={checked}
+        onClick={() => onChange(!checked)}
+        style={{
+          position: 'relative', width: 34, height: 18, borderRadius: 9999,
+          flexShrink: 0, outline: 'none', cursor: 'pointer', transition: 'all 0.18s',
+          border: `1px solid ${checked ? '#1ED8C0' : '#0C1E38'}`,
+          background: checked ? 'rgba(30,216,192,0.1)' : 'transparent',
+        }}
+      >
+        <span style={{
+          position: 'absolute', top: '50%', transform: 'translateY(-50%)',
+          left: checked ? 16 : 2, width: 12, height: 12, borderRadius: '50%',
+          background: checked ? '#1ED8C0' : '#142840',
+          transition: 'left 0.18s, background 0.18s',
+        }} />
+      </button>
+      <div>
+        <div style={{ fontSize: 12, color: checked ? '#8AB8CC' : '#5A8AA0', fontWeight: 500, lineHeight: 1.3 }}>
+          {label}
+        </div>
+        <div style={{ fontSize: 10, color: '#3D6880', lineHeight: 1.2 }}>{sub}</div>
+      </div>
+    </label>
+  );
+}
+
+function FailureCard({
+  type, examples, onHighlight,
+}: {
+  type: FailureType;
+  examples: Array<{ label: string; ri: number; ci: number; score: number }>;
+  onHighlight: (pos: [number, number]) => void;
+}) {
+  const color = FAILURE_COLORS[type];
+  const shortLabel = FAILURE_LABELS[type].split(' — ')[0];
+  return (
+    <div style={{
+      borderLeft: `2px solid ${color}`,
+      paddingLeft: 12, paddingBlock: 10, paddingRight: 10,
+      borderRadius: '0 4px 4px 0',
+      background: `${color}09`,
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 5 }}>
+        <span style={{
+          width: 5, height: 5, borderRadius: '50%',
+          background: color, boxShadow: `0 0 5px ${color}`,
+          display: 'inline-block', flexShrink: 0,
+        }} />
+        <span style={{
+          fontSize: 10, fontWeight: 700, color,
+          letterSpacing: '0.08em', textTransform: 'uppercase',
+        }}>
+          {shortLabel}
+        </span>
+      </div>
+      <p style={{ fontSize: 10, color: '#4A6D8A', margin: '0 0 8px', lineHeight: 1.6 }}>
+        {FAILURE_DESCRIPTIONS[type]}
+      </p>
+      {examples.length > 0 && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+          {examples.map((ex, idx) => (
+            <button
+              key={idx}
+              onClick={() => onHighlight([ex.ri, ex.ci])}
+              style={{
+                fontSize: 9.5, padding: '3px 8px', borderRadius: 3,
+                border: `1px solid ${color}30`, background: `${color}0D`,
+                color, cursor: 'pointer', fontFamily: 'var(--font-mono)',
+                transition: 'background 0.12s',
+              }}
+            >
+              {ex.label}
+              {ex.score > 0 && (
+                <span style={{ opacity: 0.5, marginLeft: 4 }}>{ex.score.toFixed(2)}</span>
+              )}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 function FailureDot({ type }: { type: FailureType }) {
@@ -47,68 +168,20 @@ function FailureDot({ type }: { type: FailureType }) {
     <span
       title={FAILURE_LABELS[type]}
       style={{
-        display: 'inline-block',
-        width: 7,
-        height: 7,
-        borderRadius: '50%',
-        background: FAILURE_COLORS[type],
-        flexShrink: 0,
+        display: 'inline-block', width: 5, height: 5, borderRadius: '50%',
+        background: FAILURE_COLORS[type], flexShrink: 0,
+        boxShadow: `0 0 4px ${FAILURE_COLORS[type]}`,
       }}
     />
   );
 }
 
-function Toggle({
-  checked,
-  onChange,
-  label,
-  sub,
-}: {
-  checked: boolean;
-  onChange: (v: boolean) => void;
-  label: string;
-  sub: string;
-}) {
-  return (
-    <label className="flex items-center gap-4 cursor-pointer select-none group">
-      <button
-        role="switch"
-        aria-checked={checked}
-        onClick={() => onChange(!checked)}
-        style={{
-          position: 'relative',
-          width: 48,
-          height: 26,
-          borderRadius: 9999,
-          flexShrink: 0,
-          outline: 'none',
-          transition: 'background 0.2s',
-          background: checked ? '#f97316' : '#334155',
-        }}
-      >
-        <span
-          style={{
-            position: 'absolute',
-            top: 3,
-            left: checked ? 25 : 3,
-            width: 20,
-            height: 20,
-            borderRadius: '50%',
-            background: '#ffffff',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.4)',
-            transition: 'left 0.2s',
-          }}
-        />
-      </button>
-      <span style={{ fontSize: 15, color: '#cbd5e1' }}>
-        {label}{' '}
-        <span style={{ fontSize: 13, color: '#475569' }}>{sub}</span>
-      </span>
-    </label>
-  );
-}
+const SL: React.CSSProperties = {
+  fontSize: 9, color: '#3D6880', fontWeight: 700,
+  textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 10,
+};
 
-const FAILURE_ORDER: FailureType[] = ['acronym', 'drift', 'crossdept', 'conflation', 'format'];
+// ─── Main page ───────────────────────────────────────────────────────────────
 
 export default function Home() {
   const [library, setLibrary] = useState<JobTitle[]>([]);
@@ -116,7 +189,6 @@ export default function Home() {
   const [deptPartition, setDeptPartition] = useState(false);
   const [hovered, setHovered] = useState<[number, number] | null>(null);
   const [highlighted, setHighlighted] = useState<[number, number] | null>(null);
-  const [insightOpen, setInsightOpen] = useState(true);
   const [scatterHovered, setScatterHovered] = useState<number | null>(null);
   const [gravityHovered, setGravityHovered] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<'failures' | 'gravity' | 'map'>('failures');
@@ -183,7 +255,6 @@ export default function Home() {
     };
     const THRESHOLD = 0.70;
 
-    // Group by seniority, sort within group by dept so same-dept nodes cluster together on ring
     const byLevel = new Map<number, number[]>();
     for (let i = 0; i < uniqueLibrary.length; i++) {
       const s = uniqueLibrary[i].seniority;
@@ -196,7 +267,6 @@ export default function Home() {
       );
     }
 
-    // Place nodes on rings
     const positions = new Array(uniqueLibrary.length).fill(null) as ([number, number] | null)[];
     for (const [level, indices] of byLevel) {
       const r = RADII[level];
@@ -208,7 +278,6 @@ export default function Home() {
       }
     }
 
-    // Collect edges, sorted weak→strong so strong edges render on top
     const edges: { ri: number; ci: number; score: number; type?: FailureType }[] = [];
     for (let ri = 0; ri < uniqueLibrary.length; ri++) {
       for (let ci = ri + 1; ci < uniqueLibrary.length; ci++) {
@@ -286,217 +355,209 @@ export default function Home() {
 
   const titles = uniqueLibrary.map(p => p.rawTitle);
 
-  const tabStyle = (tab: 'failures' | 'gravity' | 'map') => ({
-    padding: '10px 0',
-    marginRight: 32,
-    background: 'none',
-    border: 'none',
-    borderBottom: activeTab === tab ? '2px solid #f97316' : '2px solid transparent',
-    color: activeTab === tab ? '#e2e8f0' : '#94a3b8',
-    fontSize: 14,
-    fontWeight: 600,
-    cursor: 'pointer',
-    transition: 'color 0.15s, border-color 0.15s',
-  });
+  const totalAnomalies = useMemo(() => {
+    let count = 0;
+    for (const [key] of cellFlags) {
+      const [ri, ci] = key.split(',').map(Number);
+      if (ri < ci) count++;
+    }
+    return count + titleFlags.size;
+  }, [cellFlags, titleFlags]);
 
+  // ─── Render ───────────────────────────────────────────────────────────────
 
   return (
-    <main className="min-h-screen py-10 px-6 lg:px-10 bg-slate-950 text-slate-100">
-      <div className="max-w-[1400px] mx-auto space-y-6">
+    <div style={{
+      display: 'flex', flexDirection: 'column',
+      height: '100vh', background: '#030C1A', overflow: 'hidden',
+      fontFamily: 'var(--font-syne), system-ui, sans-serif',
+    }}>
 
-        {/* Header */}
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-slate-100">Embedding Failure Lab</h1>
-          <p className="mt-1 text-slate-400 text-sm">Cosine similarity across job titles via OpenAI embeddings.</p>
-        </div>
+      {/* Top accent stripe */}
+      <div style={{
+        height: 2, flexShrink: 0,
+        background: 'linear-gradient(to right, #1ED8C0 0%, #0A6A80 55%, transparent 100%)',
+      }} />
 
-        {/* Tabs */}
-        <div style={{ borderBottom: '1px solid #1e293b', marginBottom: 8 }}>
-          <button style={tabStyle('failures')} onClick={() => setActiveTab('failures')}>
-            Failure Analysis
-          </button>
-          <button style={tabStyle('gravity')} onClick={() => setActiveTab('gravity')}>
-            Seniority Gravity
-          </button>
-          <button style={tabStyle('map')} onClick={() => setActiveTab('map')}>
-            Embedding Map
-          </button>
-        </div>
-
-        {/* Tab: Failure Analysis */}
-        {activeTab === 'failures' && <>
-          {/* Toolbar */}
-          <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 32 }}>
-            <Toggle
-              checked={seniorityPartition}
-              onChange={setSeniorityPartition}
-              label="Seniority partition"
-              sub="(zero cross-level)"
-            />
-            <Toggle
-              checked={deptPartition}
-              onChange={setDeptPartition}
-              label="Department partition"
-              sub="(zero cross-dept)"
-            />
-            {uniqueLibrary.length > 0 && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <span style={{ fontSize: 12, color: '#64748b' }}>Cosine similarity</span>
-                <span style={{ fontSize: 12, color: '#475569' }}>Low</span>
-                <div
-                  style={{
-                    width: 100,
-                    height: 8,
-                    flexShrink: 0,
-                    borderRadius: 9999,
-                    background: `linear-gradient(to right, ${cellColor(0)}, ${cellColor(0.5)}, ${cellColor(1)})`,
-                  }}
-                />
-                <span style={{ fontSize: 12, color: '#64748b' }}>High</span>
-                <span style={{ fontSize: 12, color: '#475569', marginLeft: 4, fontVariantNumeric: 'tabular-nums' }}>
-                  {minScore.toFixed(2)}–{maxScore.toFixed(2)}
-                </span>
-              </div>
-            )}
+      {/* Header */}
+      <header style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        padding: '13px 24px', borderBottom: '1px solid #0C1E38', flexShrink: 0,
+        gap: 16,
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+          {/* Logo mark */}
+          <svg width={24} height={28} viewBox="0 0 24 28" fill="none">
+            <polygon points="12,2 22,7.5 22,20.5 12,26 2,20.5 2,7.5"
+              stroke="#1ED8C0" strokeWidth={1.5} fill="rgba(30,216,192,0.06)" />
+            <polygon points="12,8 17,11 17,17 12,20 7,17 7,11"
+              stroke="#1ED8C0" strokeWidth={0.75} fill="rgba(30,216,192,0.1)" strokeOpacity={0.5} />
+            <circle cx={12} cy={14} r={2} fill="#1ED8C0" fillOpacity={0.9} />
+          </svg>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'baseline' }}>
+              <span style={{
+                fontSize: 15, fontWeight: 800, letterSpacing: '0.14em',
+                textTransform: 'uppercase', color: '#B8D4E8',
+              }}>Embedding&nbsp;</span>
+              <span style={{
+                fontSize: 15, fontWeight: 800, letterSpacing: '0.14em',
+                textTransform: 'uppercase', color: '#1ED8C0',
+              }}>Failure&nbsp;</span>
+              <span style={{
+                fontSize: 15, fontWeight: 800, letterSpacing: '0.14em',
+                textTransform: 'uppercase', color: '#B8D4E8',
+              }}>Lab</span>
+            </div>
+            <div style={{ fontSize: 10, color: '#3D6880', letterSpacing: '0.05em', marginTop: 2 }}>
+              text-embedding-3-small · cosine similarity · semantic failure diagnostics
+            </div>
           </div>
+        </div>
 
-          {/* Insight Panel */}
-          {uniqueLibrary.length > 0 && (
-            <div className="rounded-2xl border border-slate-800 bg-slate-900/60">
-              <button
-                onClick={() => setInsightOpen(o => !o)}
-                style={{
-                  width: '100%',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  padding: '14px 20px',
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  color: '#94a3b8',
-                  fontSize: 12,
-                  fontWeight: 600,
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.08em',
-                }}
-              >
-                <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{
-                    color: '#f97316',
-                    fontSize: 18,
-                    lineHeight: 1,
-                    transition: 'transform 0.15s',
-                    transform: insightOpen ? 'rotate(0deg)' : 'rotate(-90deg)',
-                    display: 'inline-block',
-                  }}>▾</span>
-                  Failure Modes — click any example to highlight in matrix below
-                </span>
-              </button>
+        <div style={{ display: 'flex', alignItems: 'stretch', borderLeft: '1px solid #0C1E38' }}>
+          <StatBadge label="titles"      value={uniqueLibrary.length > 0 ? String(uniqueLibrary.length) : '—'} />
+          <StatBadge label="dimensions"  value="1536" />
+          <StatBadge label="anomalies"   value={uniqueLibrary.length > 0 ? String(totalAnomalies) : '—'} />
+        </div>
+      </header>
 
-              {insightOpen && (
-                <div style={{ padding: '0 20px 20px', display: 'flex', flexDirection: 'column', gap: 16 }}>
-                  {FAILURE_ORDER.map(type => {
-                    const examples = insightExamples[type] ?? [];
-                    return (
-                      <div key={type} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <span style={{
-                            display: 'inline-block', width: 8, height: 8,
-                            borderRadius: '50%', background: FAILURE_COLORS[type], flexShrink: 0,
-                          }} />
-                          <span style={{ fontSize: 13, fontWeight: 600, color: '#e2e8f0' }}>
-                            {FAILURE_LABELS[type].split(' — ')[0]}
-                          </span>
-                          </div>
-                        <p style={{ fontSize: 12, color: '#64748b', margin: 0, paddingLeft: 16 }}>
-                          {FAILURE_DESCRIPTIONS[type]}
-                        </p>
-                        {examples.length > 0 && (
-                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, paddingLeft: 16 }}>
-                            {examples.map((ex, idx) => (
-                              <button
-                                key={idx}
-                                onClick={() => setHighlighted([ex.ri, ex.ci])}
-                                style={{
-                                  fontSize: 11,
-                                  padding: '3px 10px',
-                                  borderRadius: 9999,
-                                  border: `1px solid ${FAILURE_COLORS[type]}55`,
-                                  background: `${FAILURE_COLORS[type]}18`,
-                                  color: FAILURE_COLORS[type],
-                                  cursor: 'pointer',
-                                  fontWeight: 500,
-                                }}
-                              >
-                                {ex.label}
-                                {ex.score > 0 && (
-                                  <span style={{ opacity: 0.6, marginLeft: 5 }}>
-                                    {ex.score.toFixed(2)}
-                                  </span>
-                                )}
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
+      {/* Tab nav */}
+      <div style={{
+        display: 'flex', borderBottom: '1px solid #0C1E38',
+        flexShrink: 0, background: '#020A16', paddingLeft: 24,
+      }}>
+        {(['failures', 'gravity', 'map'] as const).map((tab, i) => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            style={{
+              padding: '11px 20px', background: 'none', border: 'none', cursor: 'pointer',
+              borderBottom: activeTab === tab ? '2px solid #1ED8C0' : '2px solid transparent',
+              color: activeTab === tab ? '#8AB8CC' : '#3D6880',
+              fontSize: 10, fontWeight: 700, textTransform: 'uppercase',
+              letterSpacing: '0.12em', transition: 'color 0.15s',
+              fontFamily: 'var(--font-syne)',
+            }}
+          >
+            {['Failure Analysis', 'Seniority Gravity', 'Embedding Map'][i]}
+          </button>
+        ))}
+      </div>
+
+      {/* Content area */}
+      <div style={{ flex: 1, overflow: 'hidden', display: 'flex' }}>
+
+        {/* ── FAILURE ANALYSIS ─────────────────────────────────────────── */}
+        {activeTab === 'failures' && (
+          <>
+            {/* Sidebar */}
+            <div style={{
+              width: 310, flexShrink: 0, borderRight: '1px solid #0C1E38',
+              overflowY: 'auto', padding: '18px 16px',
+              display: 'flex', flexDirection: 'column', gap: 22,
+            }}>
+              <section>
+                <div style={SL}>Partition Controls</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  <Toggle
+                    checked={seniorityPartition}
+                    onChange={setSeniorityPartition}
+                    label="Seniority partition"
+                    sub="Zero cross-level similarities"
+                  />
+                  <Toggle
+                    checked={deptPartition}
+                    onChange={setDeptPartition}
+                    label="Department partition"
+                    sub="Zero cross-dept similarities"
+                  />
                 </div>
+              </section>
+
+              {uniqueLibrary.length > 0 && (
+                <section>
+                  <div style={SL}>Cosine Similarity Scale</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: 9, color: '#4A7090', fontFamily: 'var(--font-mono)' }}>
+                      {minScore.toFixed(2)}
+                    </span>
+                    <div style={{
+                      flex: 1, height: 5, borderRadius: 3,
+                      background: `linear-gradient(to right, ${cellColor(0.04)}, ${cellColor(0.5)}, ${cellColor(1)})`,
+                      border: '1px solid #0C1E38',
+                    }} />
+                    <span style={{ fontSize: 9, color: '#1ED8C0', fontFamily: 'var(--font-mono)' }}>
+                      {maxScore.toFixed(2)}
+                    </span>
+                  </div>
+                </section>
+              )}
+
+              {uniqueLibrary.length > 0 && (
+                <section style={{ flex: 1 }}>
+                  <div style={SL}>Detected Failure Modes</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {FAILURE_ORDER.map(type => (
+                      <FailureCard
+                        key={type}
+                        type={type}
+                        examples={insightExamples[type] ?? []}
+                        onHighlight={setHighlighted}
+                      />
+                    ))}
+                  </div>
+                </section>
               )}
             </div>
-          )}
 
-          {/* Matrix */}
-          {library.length > 0 && (
-            <div className="rounded-2xl border border-slate-800 bg-slate-900/60 overflow-hidden">
-              <div className="overflow-auto max-h-[700px]">
-                <table className="border-separate border-spacing-0">
+            {/* Matrix */}
+            {library.length > 0 ? (
+              <div style={{ flex: 1, overflow: 'auto', background: '#020A16' }}>
+                <table style={{ borderCollapse: 'separate', borderSpacing: 0 }}>
                   <thead>
                     <tr>
-                      <th
-                        className="sticky top-0 left-0 z-30 border-b border-r border-slate-700/50 bg-slate-900 px-5 text-left text-[11px] font-semibold uppercase tracking-widest text-slate-500"
-                        style={{ minWidth: 192 }}
-                      >
+                      <th style={{
+                        position: 'sticky', top: 0, left: 0, zIndex: 30,
+                        background: '#020A16',
+                        borderBottom: '1px solid #0C1E38', borderRight: '1px solid #0E2444',
+                        minWidth: 220, padding: '0 14px', textAlign: 'left',
+                        fontSize: 9, fontWeight: 700, textTransform: 'uppercase',
+                        letterSpacing: '0.12em', color: '#3D6880',
+                        fontFamily: 'var(--font-syne)', height: 40,
+                      }}>
                         Role
                       </th>
                       {titles.map((title, i) => (
                         <th
                           key={i}
-                          className="sticky top-0 z-20 border-b border-r border-slate-700/40 bg-slate-900 p-0"
-                          style={{ width: 40, minWidth: 40, verticalAlign: 'bottom', position: 'relative' }}
+                          style={{
+                            position: 'sticky', top: 0, zIndex: 20,
+                            background: '#020A16',
+                            borderBottom: '1px solid #0C1E38',
+                            borderRight: '1px solid #09182C',
+                            width: 36, minWidth: 36,
+                            verticalAlign: 'bottom', padding: 0,
+                          }}
                         >
                           {titleFlags.get(i)?.[0] && (
-                            <span
-                              title={(titleFlags.get(i) ?? []).map(t => FAILURE_LABELS[t]).join('\n')}
-                              style={{
-                                position: 'absolute',
-                                top: 6,
-                                right: 6,
-                                display: 'block',
-                                width: 7,
-                                height: 7,
-                                borderRadius: '50%',
-                                background: FAILURE_COLORS[titleFlags.get(i)![0]],
-                                zIndex: 1,
-                              }}
-                            />
+                            <span style={{
+                              position: 'absolute', top: 4, right: 4,
+                              width: 4, height: 4, borderRadius: '50%',
+                              background: FAILURE_COLORS[titleFlags.get(i)![0]],
+                              display: 'block', zIndex: 1,
+                              boxShadow: `0 0 4px ${FAILURE_COLORS[titleFlags.get(i)![0]]}`,
+                            }} />
                           )}
-                          <div
-                            style={{
-                              writingMode: 'vertical-rl',
-                              transform: 'rotate(180deg)',
-                              paddingTop: 4,
-                              paddingBottom: 16,
-                              paddingLeft: 10,
-                              paddingRight: 10,
-                              whiteSpace: 'nowrap',
-                              fontSize: 11,
-                              fontWeight: 500,
-                              color: '#ffffff',
-                              letterSpacing: '0.03em',
-                            }}
-                          >
+                          <div style={{
+                            writingMode: 'vertical-rl',
+                            transform: 'rotate(180deg)',
+                            paddingTop: 4, paddingBottom: 12,
+                            paddingLeft: 8, paddingRight: 8,
+                            whiteSpace: 'nowrap',
+                            fontSize: 9.5, fontWeight: 600, color: '#9ACFDF',
+                            letterSpacing: '0.02em',
+                          }}>
                             {title}
                           </div>
                         </th>
@@ -506,12 +567,23 @@ export default function Home() {
                   <tbody>
                     {titles.map((rowTitle, ri) => (
                       <tr key={ri}>
-                        <th
-                          className="sticky left-0 z-10 border-b border-r border-slate-700/40 bg-slate-900 px-5 text-left font-medium text-slate-300 whitespace-nowrap"
-                          style={{ height: 36, fontSize: 12 }}
-                        >
+                        <th style={{
+                          position: 'sticky', left: 0, zIndex: 10,
+                          background: '#020A16',
+                          borderBottom: '1px solid #09182C',
+                          borderRight: '1px solid #0E2444',
+                          paddingLeft: 14, paddingRight: 10,
+                          textAlign: 'left', height: 30,
+                          fontSize: 11, fontWeight: 600, color: '#9ACFDF',
+                          whiteSpace: 'nowrap',
+                        }}>
                           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                            {rowTitle}
+                            <span style={{
+                              width: 2.5, height: 13,
+                              background: DEPT_COLORS[uniqueLibrary[ri]?.department] ?? '#2D5070',
+                              borderRadius: 1, display: 'inline-block', flexShrink: 0, opacity: 0.75,
+                            }} />
+                            <span>{rowTitle}</span>
                             {(titleFlags.get(ri) ?? []).map(type => (
                               <FailureDot key={type} type={type} />
                             ))}
@@ -519,7 +591,7 @@ export default function Home() {
                         </th>
                         {scores[ri]?.map((score, ci) => {
                           const t = score > 0 ? normalize(score) : 0;
-                          const bg = score > 0 ? cellColor(t) : 'hsl(215,20%,8%)';
+                          const bg = score > 0 ? cellColor(t) : '#020A16';
                           const isHov = hovered?.[0] === ri && hovered?.[1] === ci;
                           const isHighlighted = highlighted?.[0] === ri && highlighted?.[1] === ci;
                           const cellFailure = cellFlags.get(`${ri},${ci}`);
@@ -529,19 +601,17 @@ export default function Home() {
                               data-highlighted={isHighlighted ? 'true' : undefined}
                               style={{
                                 backgroundColor: bg,
-                                width: 40,
-                                height: 36,
-                                textAlign: 'center',
-                                verticalAlign: 'middle',
-                                borderBottom: '1px solid rgba(148,163,184,0.07)',
-                                borderRight: '1px solid rgba(148,163,184,0.07)',
+                                width: 36, height: 30,
+                                textAlign: 'center', verticalAlign: 'middle',
+                                borderBottom: '1px solid rgba(9,24,44,0.9)',
+                                borderRight: '1px solid rgba(9,24,44,0.9)',
                                 cursor: 'default',
                                 transition: 'filter 0.08s',
-                                filter: isHov ? 'brightness(1.35)' : undefined,
+                                filter: isHov ? 'brightness(1.28)' : undefined,
                                 outline: isHighlighted
-                                  ? '2px solid #ffffff'
+                                  ? '2px solid #C0D8EC'
                                   : cellFailure
-                                  ? `3px solid ${FAILURE_COLORS[cellFailure]}`
+                                  ? `2px solid ${FAILURE_COLORS[cellFailure]}`
                                   : undefined,
                                 outlineOffset: '-2px',
                                 position: isHighlighted ? 'relative' : undefined,
@@ -552,14 +622,12 @@ export default function Home() {
                               title={`${rowTitle} × ${titles[ci]}: ${score.toFixed(3)}`}
                             >
                               {score > 0 && (
-                                <span
-                                  style={{
-                                    fontSize: 9,
-                                    fontWeight: 700,
-                                    color: t > 0.55 ? '#0f172a' : '#e2e8f0',
-                                    userSelect: 'none',
-                                  }}
-                                >
+                                <span style={{
+                                  fontSize: 7.5, fontWeight: 700,
+                                  color: t > 0.6 ? '#030C1A' : '#8ABFCC',
+                                  userSelect: 'none',
+                                  fontFamily: 'var(--font-mono)',
+                                }}>
                                   {score.toFixed(2)}
                                 </span>
                               )}
@@ -571,280 +639,284 @@ export default function Home() {
                   </tbody>
                 </table>
               </div>
-            </div>
-          )}
-        </>}
+            ) : (
+              <div style={{
+                flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                color: '#3D6880', fontSize: 12, fontFamily: 'var(--font-mono)',
+              }}>
+                Loading embeddings…
+              </div>
+            )}
+          </>
+        )}
 
-        {/* Tab: Seniority Gravity */}
-        {activeTab === 'gravity' && gravityData && <>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxWidth: 700 }}>
-            <p style={{ margin: 0, fontSize: 15, color: '#cbd5e1', lineHeight: 1.6 }}>
-              Titles orbit their seniority ring. Edges connect pairs with cosine&nbsp;similarity&nbsp;≥&nbsp;{gravityData.THRESHOLD.toFixed(2)}.
-            </p>
-            <p style={{ margin: 0, fontSize: 13, color: '#475569', lineHeight: 1.6 }}>
-              <span style={{ color: FAILURE_COLORS.crossdept }}>Red edges</span> are cross-department false positives —
-              the model treats seniority tokens like <em>VP</em> as gravitational anchors, pulling unrelated
-              departments into the same orbit. <span style={{ color: FAILURE_COLORS.conflation }}>Purple edges</span> mark
-              seniority conflation between adjacent rings. Hover any dot to see its title and connections.
-            </p>
-          </div>
+        {/* ── SENIORITY GRAVITY ─────────────────────────────────────────── */}
+        {activeTab === 'gravity' && gravityData && (
+          <div style={{ flex: 1, overflow: 'auto', padding: '24px 28px' }}>
+            <div style={{ maxWidth: 960, margin: '0 auto' }}>
+              <div style={{ marginBottom: 20, maxWidth: 620 }}>
+                <p style={{ margin: '0 0 8px', fontSize: 14, color: '#6A94B0', lineHeight: 1.7 }}>
+                  Titles orbit their seniority ring. Edges connect pairs with cosine similarity ≥ {gravityData.THRESHOLD.toFixed(2)}.
+                </p>
+                <p style={{ margin: 0, fontSize: 12, color: '#4A7090', lineHeight: 1.7 }}>
+                  <span style={{ color: FAILURE_COLORS.crossdept }}>Coral edges</span> are cross-department false positives —
+                  the model treats seniority tokens like <em>VP</em> as gravitational anchors, pulling unrelated departments
+                  into the same orbit. <span style={{ color: FAILURE_COLORS.conflation }}>Purple edges</span> mark seniority
+                  conflation between adjacent rings. Hover any dot to see its connections.
+                </p>
+              </div>
 
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
-            <div style={{ display: 'flex', gap: 24, alignItems: 'center', justifyContent: 'center', paddingTop: 70 }}>
-              <svg
-                viewBox={`0 0 ${gravityData.W} ${gravityData.H}`}
-                style={{ display: 'block', height: 805, width: 'auto', maxWidth: '72%' }}
-              >
-                {/* Ring outlines + labels */}
-                {([1, 2, 3, 4] as const).map((level, idx) => {
-                  const r = gravityData.RADII[level];
-                  // Stagger labels above the horizontal midline so they don't stack on one baseline
-                  const labelY = gravityData.CY - 8 - idx * 13;
-                  return (
-                    <g key={level}>
-                      <circle
-                        cx={gravityData.CX} cy={gravityData.CY} r={r}
-                        fill="none"
-                        stroke={RING_COLORS[level]}
-                        strokeWidth={level === 4 ? 1.5 : 1}
-                        strokeDasharray={level === 1 ? undefined : '5 4'}
-                      />
-                      {/* Tick from ring edge to label */}
-                      <line
-                        x1={gravityData.CX + r} y1={gravityData.CY}
-                        x2={gravityData.CX + r + 6} y2={labelY}
-                        stroke={RING_COLORS[level]} strokeWidth={0.75}
-                      />
-                      <text
-                        x={gravityData.CX + r + 9}
-                        y={labelY + 3}
-                        fontSize={10}
-                        fill={RING_COLORS[level]}
-                        dominantBaseline="middle"
-                        style={{ userSelect: 'none' }}
-                      >
-                        L{level}
-                      </text>
-                    </g>
-                  );
-                })}
-
-                {/* Edges — drawn weak→strong so high scores land on top */}
-                {gravityData.edges.map(({ ri, ci, score, type }) => {
-                  const pa = gravityData.positions[ri];
-                  const pb = gravityData.positions[ci];
-                  if (!pa || !pb) return null;
-                  const isAdj = gravityHovered === ri || gravityHovered === ci;
-                  const isOther = gravityHovered !== null && !isAdj;
-                  const t = (score - gravityData.THRESHOLD) / (1 - gravityData.THRESHOLD);
-                  const opacity = isOther ? 0.02 : isAdj ? 0.9 : t * 0.45 + 0.18;
-                  const sw = isAdj ? 2 : t * 2 + 0.6;
-                  const color = type ? FAILURE_COLORS[type] : '#475569';
-                  return (
-                    <line
-                      key={`${ri}-${ci}`}
-                      x1={pa[0]} y1={pa[1]}
-                      x2={pb[0]} y2={pb[1]}
-                      stroke={color}
-                      strokeWidth={sw}
-                      strokeOpacity={opacity}
-                    />
-                  );
-                })}
-
-                {/* Nodes */}
-                {uniqueLibrary.map((title, i) => {
-                  const pos = gravityData.positions[i];
-                  if (!pos) return null;
-                  const [x, y] = pos;
-                  const color = DEPT_COLORS[title.department] ?? '#94a3b8';
-                  const isHov = gravityHovered === i;
-                  const adjEdge = gravityHovered !== null ? gravityData.edges.find(
-                    e => (e.ri === i || e.ci === i) && (e.ri === gravityHovered || e.ci === gravityHovered),
-                  ) : undefined;
-                  const isAdj = !!adjEdge;
-                  const dimmed = gravityHovered !== null && !isHov && !isAdj;
-
-                  // Label: offset radially outward from center
-                  const dx = x - gravityData.CX, dy = y - gravityData.CY;
-                  const dist = Math.sqrt(dx * dx + dy * dy) || 1;
-                  const OFFSET = 15;
-                  const lx = x + (dx / dist) * OFFSET;
-                  const ly = y + (dy / dist) * OFFSET;
-                  const anchor = dx >= 0 ? 'start' : 'end';
-
-                  return (
-                    <g
-                      key={i}
-                      style={{ cursor: 'default' }}
-                      onMouseEnter={() => setGravityHovered(i)}
-                      onMouseLeave={() => setGravityHovered(null)}
-                    >
-                      {/* Fat invisible hit target */}
-                      <circle cx={x} cy={y} r={14} fill="transparent" />
-                      <circle
-                        cx={x} cy={y}
-                        r={isHov ? 7 : 5}
-                        fill={color}
-                        fillOpacity={dimmed ? 0.12 : 0.85}
-                        stroke={isHov ? '#ffffff' : isAdj ? color : 'none'}
-                        strokeWidth={isHov ? 1.5 : 1}
-                      />
-                      {(isHov || isAdj) ? (
+              <div style={{
+                borderRadius: 6, border: '1px solid #0C1E38', background: '#020A16',
+                padding: '20px', display: 'flex', gap: 24, alignItems: 'flex-start',
+              }}>
+                <svg
+                  viewBox={`0 0 ${gravityData.W} ${gravityData.H}`}
+                  style={{ flex: 1, minWidth: 0, height: 'auto', maxWidth: '76%' }}
+                >
+                  {([1, 2, 3, 4] as const).map((level, idx) => {
+                    const r = gravityData.RADII[level];
+                    const labelY = gravityData.CY - 8 - idx * 13;
+                    return (
+                      <g key={level}>
+                        <circle
+                          cx={gravityData.CX} cy={gravityData.CY} r={r}
+                          fill="none"
+                          stroke={RING_COLORS[level]}
+                          strokeWidth={level === 4 ? 1.5 : 1}
+                          strokeDasharray={level === 1 ? undefined : '5 4'}
+                          strokeOpacity={0.3}
+                        />
+                        <line
+                          x1={gravityData.CX + r} y1={gravityData.CY}
+                          x2={gravityData.CX + r + 6} y2={labelY}
+                          stroke={RING_COLORS[level]} strokeWidth={0.75} strokeOpacity={0.35}
+                        />
                         <text
-                          x={lx} y={ly}
-                          fontSize={11}
-                          fill="#e2e8f0"
-                          textAnchor={anchor}
+                          x={gravityData.CX + r + 9} y={labelY + 3}
+                          fontSize={10} fill={RING_COLORS[level]}
                           dominantBaseline="middle"
-                          style={{ pointerEvents: 'none', userSelect: 'none' }}
+                          style={{ userSelect: 'none' }} opacity={0.5}
                         >
-                          {isHov ? (
-                            <>
-                              <tspan>{title.rawTitle}</tspan>
-                              <tspan x={lx} dy={14} fontSize={9} fill="#475569">↓ similarity from here</tspan>
-                            </>
-                          ) : (
-                            <>
-                              <tspan>{title.rawTitle}</tspan>
-                              <tspan fill="#64748b">{adjEdge ? ` · ${adjEdge.score.toFixed(2)}` : ''}</tspan>
-                            </>
-                          )}
+                          L{level}
                         </text>
-                      ) : (
-                        <title>{title.rawTitle} · {title.department} · Level {title.seniority}</title>
-                      )}
-                    </g>
-                  );
-                })}
-              </svg>
+                      </g>
+                    );
+                  })}
 
-              {/* Legend */}
-              <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 20, paddingTop: 4 }}>
-                <div>
-                  <div style={{ fontSize: 10, color: '#475569', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 7 }}>Department</div>
-                  {Object.entries(DEPT_COLORS).map(([dept, color]) => (
-                    <div key={dept} style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 5 }}>
-                      <span style={{ width: 8, height: 8, borderRadius: '50%', background: color, flexShrink: 0, display: 'inline-block' }} />
-                      <span style={{ fontSize: 11, color: '#94a3b8' }}>{dept}</span>
-                    </div>
-                  ))}
-                </div>
-                <div>
-                  <div style={{ fontSize: 10, color: '#475569', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 7 }}>Edge type</div>
-                  {(['crossdept', 'conflation'] as FailureType[]).map(type => (
-                    <div key={type} style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 5 }}>
-                      <svg width={20} height={8} style={{ flexShrink: 0 }}>
-                        <line x1={0} y1={4} x2={20} y2={4} stroke={FAILURE_COLORS[type]} strokeWidth={1.5} />
+                  {gravityData.edges.map(({ ri, ci, score, type }) => {
+                    const pa = gravityData.positions[ri];
+                    const pb = gravityData.positions[ci];
+                    if (!pa || !pb) return null;
+                    const isAdj = gravityHovered === ri || gravityHovered === ci;
+                    const isOther = gravityHovered !== null && !isAdj;
+                    const t = (score - gravityData.THRESHOLD) / (1 - gravityData.THRESHOLD);
+                    const opacity = isOther ? 0.02 : isAdj ? 0.85 : t * 0.38 + 0.13;
+                    const sw = isAdj ? 2 : t * 2 + 0.5;
+                    const color = type ? FAILURE_COLORS[type] : '#1E3A52';
+                    return (
+                      <line
+                        key={`${ri}-${ci}`}
+                        x1={pa[0]} y1={pa[1]} x2={pb[0]} y2={pb[1]}
+                        stroke={color} strokeWidth={sw} strokeOpacity={opacity}
+                      />
+                    );
+                  })}
+
+                  {uniqueLibrary.map((title, i) => {
+                    const pos = gravityData.positions[i];
+                    if (!pos) return null;
+                    const [x, y] = pos;
+                    const color = DEPT_COLORS[title.department] ?? '#4A6D8A';
+                    const isHov = gravityHovered === i;
+                    const adjEdge = gravityHovered !== null
+                      ? gravityData.edges.find(
+                          e => (e.ri === i || e.ci === i) && (e.ri === gravityHovered || e.ci === gravityHovered),
+                        )
+                      : undefined;
+                    const isAdj = !!adjEdge;
+                    const dimmed = gravityHovered !== null && !isHov && !isAdj;
+
+                    const dx = x - gravityData.CX, dy = y - gravityData.CY;
+                    const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+                    const OFFSET = 15;
+                    const lx = x + (dx / dist) * OFFSET;
+                    const ly = y + (dy / dist) * OFFSET;
+                    const anchor = dx >= 0 ? 'start' : 'end';
+
+                    return (
+                      <g
+                        key={i}
+                        style={{ cursor: 'default' }}
+                        onMouseEnter={() => setGravityHovered(i)}
+                        onMouseLeave={() => setGravityHovered(null)}
+                      >
+                        <circle cx={x} cy={y} r={14} fill="transparent" />
+                        <circle
+                          cx={x} cy={y} r={isHov ? 6 : 4.5}
+                          fill={color}
+                          fillOpacity={dimmed ? 0.1 : 0.82}
+                          stroke={isHov ? '#C0D8EC' : isAdj ? color : 'none'}
+                          strokeWidth={isHov ? 1.5 : 1}
+                        />
+                        {(isHov || isAdj) ? (
+                          <text
+                            x={lx} y={ly} fontSize={11} fill="#4A6D8A"
+                            textAnchor={anchor} dominantBaseline="middle"
+                            style={{ pointerEvents: 'none', userSelect: 'none' }}
+                          >
+                            {isHov ? (
+                              <>
+                                <tspan>{title.rawTitle}</tspan>
+                                <tspan x={lx} dy={14} fontSize={9} fill="#1E3A52">↓ similarity from here</tspan>
+                              </>
+                            ) : (
+                              <>
+                                <tspan>{title.rawTitle}</tspan>
+                                <tspan fill="#1E3A52">{adjEdge ? ` · ${adjEdge.score.toFixed(2)}` : ''}</tspan>
+                              </>
+                            )}
+                          </text>
+                        ) : (
+                          <title>{title.rawTitle} · {title.department} · Level {title.seniority}</title>
+                        )}
+                      </g>
+                    );
+                  })}
+                </svg>
+
+                {/* Legend */}
+                <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 20, paddingTop: 4, minWidth: 120 }}>
+                  <div>
+                    <div style={SL}>Department</div>
+                    {Object.entries(DEPT_COLORS).map(([dept, color]) => (
+                      <div key={dept} style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 5 }}>
+                        <span style={{ width: 6, height: 6, borderRadius: '50%', background: color, flexShrink: 0, display: 'inline-block' }} />
+                        <span style={{ fontSize: 10, color: '#5A8AA0' }}>{dept}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div>
+                    <div style={SL}>Edge Type</div>
+                    {(['crossdept', 'conflation'] as FailureType[]).map(type => (
+                      <div key={type} style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 5 }}>
+                        <svg width={18} height={6} style={{ flexShrink: 0 }}>
+                          <line x1={0} y1={3} x2={18} y2={3} stroke={FAILURE_COLORS[type]} strokeWidth={1.5} />
+                        </svg>
+                        <span style={{ fontSize: 10, color: '#5A8AA0' }}>
+                          {type === 'crossdept' ? 'Cross-dept' : 'Conflation'}
+                        </span>
+                      </div>
+                    ))}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                      <svg width={18} height={6} style={{ flexShrink: 0 }}>
+                        <line x1={0} y1={3} x2={18} y2={3} stroke="#142840" strokeWidth={1} />
                       </svg>
-                      <span style={{ fontSize: 11, color: '#94a3b8' }}>
-                        {type === 'crossdept' ? 'Cross-dept' : 'Conflation'}
-                      </span>
+                      <span style={{ fontSize: 10, color: '#5A8AA0' }}>Normal</span>
                     </div>
-                  ))}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-                    <svg width={20} height={8} style={{ flexShrink: 0 }}>
-                      <line x1={0} y1={4} x2={20} y2={4} stroke="#475569" strokeWidth={1} />
-                    </svg>
-                    <span style={{ fontSize: 11, color: '#94a3b8' }}>Normal</span>
+                  </div>
+                  <div>
+                    <div style={SL}>Seniority Ring</div>
+                    {([4, 3, 2, 1] as const).map(level => (
+                      <div key={level} style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 5 }}>
+                        <svg width={16} height={10} style={{ flexShrink: 0 }}>
+                          <circle cx={8} cy={5} r={4} fill="none" stroke={RING_COLORS[level]}
+                            strokeWidth={1} strokeDasharray={level === 1 ? undefined : '2 2'} />
+                        </svg>
+                        <span style={{ fontSize: 10, color: RING_COLORS[level], fontWeight: 600 }}>L{level}</span>
+                        <span style={{ fontSize: 10, color: '#3D6880' }}>{gravityData.LEVEL_LABELS[level]}</span>
+                      </div>
+                    ))}
                   </div>
                 </div>
-                <div>
-                  <div style={{ fontSize: 10, color: '#475569', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 7 }}>Seniority Ring</div>
-                  {([4, 3, 2, 1] as const).map(level => (
-                    <div key={level} style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 5 }}>
-                      <svg width={20} height={12} style={{ flexShrink: 0 }}>
-                        <circle cx={10} cy={6} r={5} fill="none" stroke={RING_COLORS[level]} strokeWidth={1}
-                          strokeDasharray={level === 1 ? undefined : '3 2'} />
-                      </svg>
-                      <span style={{ fontSize: 11, color: RING_COLORS[level], fontWeight: 500 }}>L{level}</span>
-                      <span style={{ fontSize: 11, color: '#475569' }}>{gravityData.LEVEL_LABELS[level]}</span>
-                    </div>
-                  ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── EMBEDDING MAP ─────────────────────────────────────────────── */}
+        {activeTab === 'map' && scatterData && (
+          <div style={{ flex: 1, overflow: 'auto', padding: '24px 28px' }}>
+            <div style={{ maxWidth: 840, margin: '0 auto' }}>
+              <div style={{ marginBottom: 20, maxWidth: 620 }}>
+                <p style={{ margin: '0 0 8px', fontSize: 14, color: '#6A94B0', lineHeight: 1.7 }}>
+                  Each dot is a job title, positioned by what the model &ldquo;thinks&rdquo; it means.
+                  Dots that land close together look similar to the model.
+                </p>
+                <p style={{ margin: 0, fontSize: 12, color: '#4A7090', lineHeight: 1.7 }}>
+                  Notice how VP titles from different departments cluster together — the model treats
+                  seniority level as the dominant signal, overriding department function. Dot size reflects
+                  seniority level. Hover any dot to see the title.
+                </p>
+              </div>
+
+              <div style={{
+                borderRadius: 6, border: '1px solid #0C1E38', background: '#020A16',
+                padding: '20px', display: 'flex', gap: 24, alignItems: 'flex-start',
+              }}>
+                <svg
+                  viewBox={`0 0 ${scatterData.W} ${scatterData.H}`}
+                  style={{ flex: 1, minWidth: 0, height: 'auto' }}
+                >
+                  {highlighted && scatterData.pts[highlighted[0]] && scatterData.pts[highlighted[1]] && (
+                    <line
+                      x1={scatterData.pts[highlighted[0]][0]} y1={scatterData.pts[highlighted[0]][1]}
+                      x2={scatterData.pts[highlighted[1]][0]} y2={scatterData.pts[highlighted[1]][1]}
+                      stroke="#4A6D8A" strokeWidth={1} strokeOpacity={0.5} strokeDasharray="4 3"
+                    />
+                  )}
+                  {uniqueLibrary.map((title, i) => {
+                    const [cx, cy] = scatterData.pts[i];
+                    const r = title.seniority * 2.5 + 2.5;
+                    const color = DEPT_COLORS[title.department] ?? '#4A6D8A';
+                    const isHighlighted = highlighted !== null && (highlighted[0] === i || highlighted[1] === i);
+                    const isHov = scatterHovered === i;
+                    return (
+                      <circle
+                        key={i}
+                        cx={cx} cy={cy} r={r}
+                        fill={color}
+                        fillOpacity={isHov || isHighlighted ? 0.9 : 0.55}
+                        stroke={isHighlighted ? '#C0D8EC' : isHov ? color : 'none'}
+                        strokeWidth={isHighlighted ? 1.5 : 1}
+                        style={{ cursor: 'default' }}
+                        onMouseEnter={() => setScatterHovered(i)}
+                        onMouseLeave={() => setScatterHovered(null)}
+                      >
+                        <title>{title.rawTitle} · {title.department} · Level {title.seniority}</title>
+                      </circle>
+                    );
+                  })}
+                </svg>
+
+                <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 20, paddingTop: 4, minWidth: 110 }}>
+                  <div>
+                    <div style={SL}>Department</div>
+                    {Object.entries(DEPT_COLORS).map(([dept, color]) => (
+                      <div key={dept} style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 5 }}>
+                        <span style={{ width: 6, height: 6, borderRadius: '50%', background: color, flexShrink: 0, display: 'inline-block' }} />
+                        <span style={{ fontSize: 10, color: '#5A8AA0' }}>{dept}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div>
+                    <div style={SL}>Seniority</div>
+                    {[1, 2, 3, 4].map(s => (
+                      <div key={s} style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 5 }}>
+                        <svg width={20} height={20} style={{ flexShrink: 0 }}>
+                          <circle cx={10} cy={10} r={s * 2.5 + 2.5} fill="#4A6D8A" fillOpacity={0.55} />
+                        </svg>
+                        <span style={{ fontSize: 10, color: '#5A8AA0' }}>Level {s}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
           </div>
-        </>}
-
-        {/* Tab: Embedding Map */}
-        {activeTab === 'map' && scatterData && <>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxWidth: 680 }}>
-            <p style={{ margin: 0, fontSize: 15, color: '#cbd5e1', lineHeight: 1.6 }}>
-              Each dot is a job title, positioned by what the model &ldquo;thinks&rdquo; it means.
-              Dots that land close together look similar to the model.
-            </p>
-            <p style={{ margin: 0, fontSize: 13, color: '#475569', lineHeight: 1.6 }}>
-              Notice how VP titles from different departments cluster together in the top-left — the model
-              treats seniority level as the dominant signal, overriding department function.
-              Dot size reflects seniority level. Hover any dot to see the title.
-            </p>
-          </div>
-
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5" style={{ maxWidth: 760 }}>
-            <div style={{ display: 'flex', gap: 24, alignItems: 'flex-start' }}>
-              <svg
-                viewBox={`0 0 ${scatterData.W} ${scatterData.H}`}
-                style={{ flex: 1, minWidth: 0, height: 'auto' }}
-              >
-                {highlighted && scatterData.pts[highlighted[0]] && scatterData.pts[highlighted[1]] && (
-                  <line
-                    x1={scatterData.pts[highlighted[0]][0]} y1={scatterData.pts[highlighted[0]][1]}
-                    x2={scatterData.pts[highlighted[1]][0]} y2={scatterData.pts[highlighted[1]][1]}
-                    stroke="#ffffff" strokeWidth={1} strokeOpacity={0.35} strokeDasharray="4 3"
-                  />
-                )}
-                {uniqueLibrary.map((title, i) => {
-                  const [cx, cy] = scatterData.pts[i];
-                  const r = title.seniority * 2.5 + 3;
-                  const color = DEPT_COLORS[title.department] ?? '#94a3b8';
-                  const isHighlighted = highlighted !== null && (highlighted[0] === i || highlighted[1] === i);
-                  const isHov = scatterHovered === i;
-                  return (
-                    <circle
-                      key={i}
-                      cx={cx} cy={cy} r={r}
-                      fill={color}
-                      fillOpacity={isHov || isHighlighted ? 1 : 0.72}
-                      stroke={isHighlighted ? '#ffffff' : isHov ? '#e2e8f0' : 'none'}
-                      strokeWidth={isHighlighted ? 2 : 1.5}
-                      style={{ cursor: 'default' }}
-                      onMouseEnter={() => setScatterHovered(i)}
-                      onMouseLeave={() => setScatterHovered(null)}
-                    >
-                      <title>{title.rawTitle} · {title.department} · Level {title.seniority}</title>
-                    </circle>
-                  );
-                })}
-              </svg>
-
-              <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 20, paddingTop: 4 }}>
-                <div>
-                  <div style={{ fontSize: 10, color: '#475569', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 7 }}>Department</div>
-                  {Object.entries(DEPT_COLORS).map(([dept, color]) => (
-                    <div key={dept} style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 5 }}>
-                      <span style={{ width: 8, height: 8, borderRadius: '50%', background: color, flexShrink: 0, display: 'inline-block' }} />
-                      <span style={{ fontSize: 11, color: '#94a3b8' }}>{dept}</span>
-                    </div>
-                  ))}
-                </div>
-                <div>
-                  <div style={{ fontSize: 10, color: '#475569', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 7 }}>Seniority</div>
-                  {[1, 2, 3, 4].map(s => (
-                    <div key={s} style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 5 }}>
-                      <svg width={20} height={20} style={{ flexShrink: 0 }}>
-                        <circle cx={10} cy={10} r={s * 2.5 + 3} fill="#94a3b8" fillOpacity={0.72} />
-                      </svg>
-                      <span style={{ fontSize: 11, color: '#94a3b8' }}>Level {s}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        </>}
+        )}
 
       </div>
-    </main>
+    </div>
   );
 }

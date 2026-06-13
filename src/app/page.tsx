@@ -555,7 +555,7 @@ export default function Home() {
                             paddingTop: 4, paddingBottom: 12,
                             paddingLeft: 8, paddingRight: 8,
                             whiteSpace: 'nowrap',
-                            fontSize: 9.5, fontWeight: 500, color: '#6A94B0',
+                            fontSize: 9.5, fontWeight: 600, color: '#9ACFDF',
                             letterSpacing: '0.02em',
                           }}>
                             {title}
@@ -574,7 +574,7 @@ export default function Home() {
                           borderRight: '1px solid #0E2444',
                           paddingLeft: 14, paddingRight: 10,
                           textAlign: 'left', height: 30,
-                          fontSize: 11, fontWeight: 400, color: '#7AAFC4',
+                          fontSize: 11, fontWeight: 600, color: '#9ACFDF',
                           whiteSpace: 'nowrap',
                         }}>
                           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>

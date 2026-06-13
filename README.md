@@ -4,7 +4,9 @@
 
 A live diagnostics sandbox for OpenAI title embeddings. Builds an NxN cosine similarity matrix across 46 job titles and surfaces five systematic failure modes — with cosine scores for each.
 
-<img width="567" height="455" alt="Network graph — each node is a title, edge thickness scales with cosine similarity" src="screenshots/network-graph.jpg" />
+<img width="567" height="455" alt="Network graph — each node is a title, edge thickness scales with cosine similarity" src="screenshots/network-graph.jpg" /> <img width="691" height="297" alt="image" src="https://github.com/user-attachments/assets/cd1dea8e-f294-46b5-820e-a24158097c1c" />
+
+
 
 *Each node is a title, edge thickness scales with cosine similarity*
 
@@ -30,7 +32,7 @@ An NxN cosine similarity heatmap across all 46 titles. Hover any cell to see the
 </details>
 
 <details><summary>📸 Cosine similarity matrix</summary>
-<img width="862" height="400" alt="Cosine similarity matrix" src="screenshots/heatmap-small.jpg" />
+<img width="1387" height="655" alt="image" src="https://github.com/user-attachments/assets/c0410431-1952-4f38-beb5-c59dca0bb971" />
 
 *Cosine similarity matrix (left) · Failure mode breakdown (right)*
 </details>

@@ -2,6 +2,27 @@
 
 ![Model](https://img.shields.io/badge/model-text--embedding--3--small-blue) ![Titles](https://img.shields.io/badge/titles-46-green) ![Metric](https://img.shields.io/badge/metric-cosine%20similarity-orange) ![Stack](https://img.shields.io/badge/stack-Next.js%2014%20%2F%20TypeScript-black)
 
+## Table of Contents
+
+- [The Problem](#the-problem)
+- [Overview — What This Exposes](#overview--what-this-exposes)
+- [Dashboard](#dashboard)
+  - [Failure Analysis](#failure-analysis)
+  - [Seniority Gravity](#seniority-gravity)
+  - [Embedding Map](#embedding-map)
+- [Findings](#findings)
+  - [Areas of Success](#areas-of-success)
+  - [Failure Cases](#failure-cases)
+- [Conclusion & Architectural Recommendation](#conclusion--architectural-recommendation)
+- [Usage & Background](#usage--background)
+  - [Quick Start](#quick-start)
+  - [Extend It](#extend-it)
+  - [Background](#background)
+  - [Methodology](#methodology)
+  - [Tech Stack](#tech-stack)
+
+---
+
 ## The Problem
 
 Job titles are self-reported, unstructured, and inconsistent by nature. Whether you're matching candidates on LinkedIn, segmenting contacts in a CRM, or parsing resumes — the same role arrives written a dozen different ways. `VP of MarOps`, `Head of Marketing Operations`, and `Senior Marketing Operations Manager` could all describe the same person at the same seniority level.
@@ -10,7 +31,9 @@ The obvious fix is a standard taxonomy but frameworks like O*NET are too slow to
 
 Embedding-based similarity is the natural alternative but it doesn't work on raw titles either. Models like `text-embedding-3-small` encode surface form as strongly as meaning, so `CRO` and `Chief Revenue Officer` land in different parts of the vector space, and `VP of Sales` scores closer to `VP of Marketing` than to `Head of Revenue`. 
 
-Embeddings can't fix broken data. Normalization has to happen before embedding, not after. This project stress-tests that assumption against 46 job titles and catalogues the five systematic failure modes with exact cosine scores that corrupt any downstream classifier or matching system relying on raw embeddings.
+> **The Core Thesis:** Embeddings can't fix broken data. Normalization has to happen *before* text hits the vector space, not after. 
+
+This project stress-tests that assumption against 46 job titles and catalogues the five systematic failure modes with exact cosine scores that corrupt any downstream classifier or matching system relying on raw embeddings.
 
 <img width="567" height="455" alt="Network graph — each node is a title, edge thickness scales with cosine similarity" src="screenshots/network-graph.jpg" /> 
 
@@ -42,7 +65,7 @@ An NxN cosine similarity heatmap across all 46 titles. Hover any cell to see the
 </details>
 
 <details><summary>📸 Cosine similarity matrix</summary>
-<img width="1387" height="655" alt="image" src="https://github.com/user-attachments/assets/c0410431-1952-4f38-beb5-c59dca0bb971" />
+<img width="1673" height="506" alt="image" src="https://github.com/user-attachments/assets/0823d71a-30a2-4e56-b590-3840e7d83969" />
 
 *Cosine similarity matrix (left) · Failure mode breakdown (right)*
 </details>
@@ -103,9 +126,9 @@ Non-canonical titles drift from their formal equivalents. `VP` and `Director` an
 
 ---
 
-## Conclusion
+## Conclusion & Architectural Recommendation
 
-Raw embeddings provide a strong baseline for functional grouping but fail at **precise entity resolution** and **seniority mapping**. The five failure modes above are not edge cases — they reflect systematic gaps that appear whenever titles deviate from a canonical `"[Level] of [Department]"` format. Static taxonomies like O*NET can't fill the gap either; they lag too far behind how roles actually evolve in the market. Normalization must happen before embedding, and it cannot rely on a fixed classification alone. A production title-matching system needs at minimum: acronym expansion, title normalization, and a seniority signal that does not rely on the embedding alone.
+Raw embeddings provide a strong baseline for functional grouping but fail at **precise entity resolution** and **seniority mapping**. The five failure modes above are not edge cases — they reflect systematic gaps that appear whenever titles deviate from a canonical `"[Level] of [Department]"` format. Static taxonomies like O*NET can't fill the gap either; they lag too far behind how roles actually evolve in the market. 
 
 ---
 
@@ -163,9 +186,7 @@ An embedding model converts text into a high-dimensional numeric vector — a li
 
 Cosine similarity measures the angle between two vectors, returning a value between 0.0 and 1.0. A score of **1.0** means the vectors point in exactly the same direction (identical meaning); **0.0** means they are orthogonal (no relationship). The metric ignores vector magnitude, so it compares meaning rather than word count or document length.
 
-```
-similarity = (A · B) / (|A| × |B|)
-```
+$$\text{similarity} = \frac{A \cdot B}{\|A\| \times \|B\|}$$
 
 <details><summary>📸 Embedding space visualization</summary>
 <img width="2032" height="949" alt="image" src="screenshots/embedding-space-visualization.jpg" />

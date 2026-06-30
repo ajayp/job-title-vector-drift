@@ -5,27 +5,56 @@ const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
 });
 
+const cfgPath = new URL('../cfg/titles.json', import.meta.url);
 const dataPath = new URL('../src/data/library.json', import.meta.url);
 
-interface JobTitle {
-    id: number;
+interface TitleConfig {
     rawTitle: string;
     department: string;
     seniority: number;
+}
+
+interface JobTitle extends TitleConfig {
     vector: number[];
 }
 
 async function seed() {
     console.log('🚀 Starting sequential seeding process...');
     try {
-        const libraryData = await fs.readFile(dataPath, 'utf8').then(JSON.parse).catch(() => ([]));
-        const library: JobTitle[] = libraryData;
+        // Read cfg as source of truth
+        let config: TitleConfig[];
+        try {
+            config = JSON.parse(await fs.readFile(cfgPath, 'utf8'));
+        } catch (err: unknown) {
+            if (err && typeof err === 'object' && 'code' in err && (err as NodeJS.ErrnoException).code === 'ENOENT') {
+                console.error('❌ cfg/titles.json not found.');
+                process.exit(1);
+            }
+            throw err;
+        }
 
-        // Find titles with empty vectors
+        // Load existing library to carry over cached vectors (smart upsert)
+        let existing: JobTitle[] = [];
+        try {
+            existing = JSON.parse(await fs.readFile(dataPath, 'utf8'));
+        } catch {
+            // library.json may not exist yet — that's fine, start fresh
+        }
+
+        const vectorCache = new Map(existing.map(e => [e.rawTitle, e.vector]));
+
+        // Rebuild library from cfg, reusing cached vectors where available
+        const library: JobTitle[] = config.map(entry => ({
+            ...entry,
+            vector: vectorCache.get(entry.rawTitle) ?? [],
+        }));
+
+        // Find titles that still need embedding
         const toSeed = library.filter(p => !p.vector || p.vector.length === 0);
 
         if (toSeed.length === 0) {
-            console.log('✅ All job titles already have embeddings. Nothing to seed.');
+            await fs.writeFile(dataPath, JSON.stringify(library, null, 2));
+            console.log('✅ All job titles already have embeddings. library.json rebuilt from cfg.');
             return;
         }
 
@@ -38,12 +67,11 @@ async function seed() {
                 input: title.rawTitle,
             });
 
-            const vector = Array.from(embedding.data[0].embedding);
-            title.vector = vector;
+            title.vector = Array.from(embedding.data[0].embedding);
         }
 
         await fs.writeFile(dataPath, JSON.stringify(library, null, 2));
-        console.log(`✅ Success! Seeded ${toSeed.length} title(s) with embeddings.`);
+        console.log(`✅ Success! Seeded ${toSeed.length} title(s). library.json rebuilt from cfg.`);
     } catch (error) {
         console.error('❌ Seeding failed:', error);
         process.exit(1);
@@ -81,7 +109,7 @@ if (command === 'clear') {
     seed();
 } else {
     console.log('Usage: npx ts-node scripts/seed.ts [seed|clear]');
-    console.log('  seed  - Generate embeddings for job titles with empty vectors (default)');
+    console.log('  seed  - Rebuild library.json from cfg/titles.json, embed any new titles (default)');
     console.log('  clear - Remove all vector data from library.json');
     process.exit(1);
 }

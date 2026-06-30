@@ -6,10 +6,10 @@
   color-scheme: dark;
 
   --bg:          #030C1A;
-  --surface:     #040F1E;
-  --surface-2:   #071828;
-  --border:      #0C1E38;
-  --border-mid:  #0E2444;
+  --surface:     #07182E;
+  --surface-2:   #0D2642;
+  --border:      #133058;
+  --border-mid:  #1A3C6E;
   --accent:      #1ED8C0;
   --accent-dim:  rgba(30, 216, 192, 0.12);
   --text:        #C0D8EC;
@@ -28,5 +28,5 @@ html, body {
 /* Thin, unobtrusive scrollbars */
 ::-webkit-scrollbar { width: 4px; height: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #0C1E38; border-radius: 2px; }
-::-webkit-scrollbar-thumb:hover { background: #163050; }
+::-webkit-scrollbar-thumb { background: #133058; border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: #1A3C6E; }

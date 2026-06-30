@@ -1,6 +1,5 @@
 [
   {
-    "id": 7,
     "rawTitle": "VP of Sales",
     "department": "Sales",
     "seniority": 4,
@@ -1544,7 +1543,6 @@
     ]
   },
   {
-    "id": 9,
     "rawTitle": "Director of Talent",
     "department": "HR",
     "seniority": 3,
@@ -3088,7 +3086,6 @@
     ]
   },
   {
-    "id": 10,
     "rawTitle": "Head of Recruiting",
     "department": "HR",
     "seniority": 3,
@@ -4632,7 +4629,6 @@
     ]
   },
   {
-    "id": 11,
     "rawTitle": "Account Executive",
     "department": "Sales",
     "seniority": 2,
@@ -6176,7 +6172,6 @@
     ]
   },
   {
-    "id": 12,
     "rawTitle": "Account Manager",
     "department": "Sales",
     "seniority": 2,
@@ -7720,7 +7715,6 @@
     ]
   },
   {
-    "id": 13,
     "rawTitle": "Chief Revenue Officer",
     "department": "Sales",
     "seniority": 4,
@@ -9264,7 +9258,6 @@
     ]
   },
   {
-    "id": 14,
     "rawTitle": "Chief Technology Officer",
     "department": "Engineering",
     "seniority": 4,
@@ -10808,7 +10801,6 @@
     ]
   },
   {
-    "id": 15,
     "rawTitle": "Sales Development Rep",
     "department": "Sales",
     "seniority": 1,
@@ -12352,7 +12344,6 @@
     ]
   },
   {
-    "id": 16,
     "rawTitle": "Software Engineer",
     "department": "Engineering",
     "seniority": 2,
@@ -13896,7 +13887,6 @@
     ]
   },
   {
-    "id": 17,
     "rawTitle": "Head of People",
     "department": "HR",
     "seniority": 4,
@@ -15440,7 +15430,6 @@
     ]
   },
   {
-    "id": 18,
     "rawTitle": "Sales VP",
     "department": "Sales",
     "seniority": 4,
@@ -16984,7 +16973,6 @@
     ]
   },
   {
-    "id": 19,
     "rawTitle": "Engineering VP",
     "department": "Engineering",
     "seniority": 4,
@@ -18528,7 +18516,6 @@
     ]
   },
   {
-    "id": 20,
     "rawTitle": "Revenue Leader",
     "department": "Sales",
     "seniority": 4,
@@ -20072,7 +20059,6 @@
     ]
   },
   {
-    "id": 21,
     "rawTitle": "Technical Architect",
     "department": "Engineering",
     "seniority": 3,
@@ -21616,7 +21602,6 @@
     ]
   },
   {
-    "id": 22,
     "rawTitle": "Full Stack Developer",
     "department": "Engineering",
     "seniority": 2,
@@ -23160,7 +23145,6 @@
     ]
   },
   {
-    "id": 23,
     "rawTitle": "DevOps Engineer",
     "department": "Engineering",
     "seniority": 2,
@@ -24704,7 +24688,6 @@
     ]
   },
   {
-    "id": 24,
     "rawTitle": "Legal VP",
     "department": "Legal",
     "seniority": 4,
@@ -26248,7 +26231,6 @@
     ]
   },
   {
-    "id": 25,
     "rawTitle": "Logistics VP",
     "department": "Operations",
     "seniority": 4,
@@ -27792,7 +27774,6 @@
     ]
   },
   {
-    "id": 26,
     "rawTitle": "Sales Principal",
     "department": "Sales",
     "seniority": 4,
@@ -29336,7 +29317,6 @@
     ]
   },
   {
-    "id": 27,
     "rawTitle": "Engineering Principal",
     "department": "Engineering",
     "seniority": 4,
@@ -30880,7 +30860,6 @@
     ]
   },
   {
-    "id": 31,
     "rawTitle": "Strategic Sales Vice President",
     "department": "Sales",
     "seniority": 4,
@@ -32424,7 +32403,6 @@
     ]
   },
   {
-    "id": 33,
     "rawTitle": "Customer Success Associate",
     "department": "Sales",
     "seniority": 1,
@@ -33968,7 +33946,6 @@
     ]
   },
   {
-    "id": 35,
     "rawTitle": "CRO",
     "department": "Sales",
     "seniority": 4,
@@ -35512,7 +35489,6 @@
     ]
   },
   {
-    "id": 36,
     "rawTitle": "VP of Engineering",
     "department": "Engineering",
     "seniority": 4,
@@ -37056,7 +37032,6 @@
     ]
   },
   {
-    "id": 37,
     "rawTitle": "VP of Legal",
     "department": "Legal",
     "seniority": 4,
@@ -38600,7 +38575,6 @@
     ]
   },
   {
-    "id": 38,
     "rawTitle": "VP of Logistics",
     "department": "Operations",
     "seniority": 4,
@@ -40144,7 +40118,6 @@
     ]
   },
   {
-    "id": 39,
     "rawTitle": "VP of Marketing",
     "department": "Marketing",
     "seniority": 4,
@@ -41688,7 +41661,6 @@
     ]
   },
   {
-    "id": 40,
     "rawTitle": "Marketing VP",
     "department": "Marketing",
     "seniority": 4,
@@ -43232,7 +43204,6 @@
     ]
   },
   {
-    "id": 41,
     "rawTitle": "VP Sales",
     "department": "Sales",
     "seniority": 4,
@@ -44776,7 +44747,6 @@
     ]
   },
   {
-    "id": 42,
     "rawTitle": "VP Engineering",
     "department": "Engineering",
     "seniority": 4,
@@ -46320,7 +46290,6 @@
     ]
   },
   {
-    "id": 43,
     "rawTitle": "Director of Sales",
     "department": "Sales",
     "seniority": 3,
@@ -47864,7 +47833,6 @@
     ]
   },
   {
-    "id": 44,
     "rawTitle": "Sales Director",
     "department": "Sales",
     "seniority": 3,
@@ -49408,7 +49376,6 @@
     ]
   },
   {
-    "id": 45,
     "rawTitle": "Director Sales",
     "department": "Sales",
     "seniority": 3,
@@ -50952,7 +50919,6 @@
     ]
   },
   {
-    "id": 46,
     "rawTitle": "Director of Engineering",
     "department": "Engineering",
     "seniority": 3,
@@ -52496,7 +52462,6 @@
     ]
   },
   {
-    "id": 47,
     "rawTitle": "Engineering Director",
     "department": "Engineering",
     "seniority": 3,
@@ -54040,7 +54005,6 @@
     ]
   },
   {
-    "id": 48,
     "rawTitle": "Director Engineering",
     "department": "Engineering",
     "seniority": 3,
@@ -55584,7 +55548,6 @@
     ]
   },
   {
-    "id": 49,
     "rawTitle": "Finance VP",
     "department": "Finance",
     "seniority": 4,
@@ -57128,7 +57091,6 @@
     ]
   },
   {
-    "id": 50,
     "rawTitle": "VP of Finance",
     "department": "Finance",
     "seniority": 4,
@@ -58672,7 +58634,6 @@
     ]
   },
   {
-    "id": 51,
     "rawTitle": "VP Finance",
     "department": "Finance",
     "seniority": 4,
@@ -60216,7 +60177,6 @@
     ]
   },
   {
-    "id": 52,
     "rawTitle": "HR VP",
     "department": "HR",
     "seniority": 4,
@@ -61760,7 +61720,6 @@
     ]
   },
   {
-    "id": 53,
     "rawTitle": "VP of HR",
     "department": "HR",
     "seniority": 4,
@@ -63304,7 +63263,6 @@
     ]
   },
   {
-    "id": 54,
     "rawTitle": "VP HR",
     "department": "HR",
     "seniority": 4,
@@ -64848,7 +64806,6 @@
     ]
   },
   {
-    "id": 55,
     "rawTitle": "Senior Sales Manager",
     "department": "Sales",
     "seniority": 2,
@@ -66392,7 +66349,6 @@
     ]
   },
   {
-    "id": 56,
     "rawTitle": "Sales Senior Manager",
     "department": "Sales",
     "seniority": 2,
@@ -67936,7 +67892,6 @@
     ]
   },
   {
-    "id": 57,
     "rawTitle": "Senior Engineering Manager",
     "department": "Engineering",
     "seniority": 2,
@@ -69480,7 +69435,6 @@
     ]
   },
   {
-    "id": 58,
     "rawTitle": "Engineering Senior Manager",
     "department": "Engineering",
     "seniority": 2,

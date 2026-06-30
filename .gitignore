@@ -12,9 +12,10 @@ yarn-error.log
 logs
 
 .env.local
+.env
 .vscode/
 
 .next/
 *.tsbuildinfo
 
-CLAUDE.md
+

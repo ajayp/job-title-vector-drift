@@ -1,11 +1,11 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
+import { getSimilarity, applyHardPartition, pca2D } from '@/lib/math';
 import {
-  getSimilarity, applyHardPartition, detectFailures, pca2D,
-  FAILURE_COLORS, FAILURE_LABELS, FAILURE_DESCRIPTIONS,
+  detectFailures, FAILURE_COLORS, FAILURE_LABELS, FAILURE_DESCRIPTIONS,
   type FailureType,
-} from '@/lib/math';
+} from '@/lib/failures';
 
 const DEPT_COLORS: Record<string, string> = {
   Engineering: '#3b82f6',
@@ -25,19 +25,72 @@ const RING_COLORS: Record<number, string> = {
 };
 
 interface JobTitle {
-  id: number;
   rawTitle: string;
   department: string;
   seniority: number;
   vector: number[];
 }
 
+// ─── Themes ──────────────────────────────────────────────────────────────────
+
+const DARK = {
+  bg:          '#030C1A',
+  surface:     '#020A16',
+  border:      '#0C1E38',
+  borderInner: '#09182C',
+  borderRow:   '#0E2444',
+  accent:      '#1ED8C0',
+  accentDim:   'rgba(30,216,192,0.1)',
+  accentGlow:  '#0A6A80',
+  text:        '#9ACFDF',
+  textBrand:   '#B8D4E8',
+  textActive:  '#8AB8CC',
+  textMid:     '#6A94B0',
+  textSub:     '#4A6D8A',
+  textLabel:   '#3D6880',
+  textDim:     '#1E3A52',
+  textDimmer:  '#142840',
+  stripe:      'linear-gradient(to right, #1ED8C0 0%, #0A6A80 55%, transparent 100%)',
+  cellText:    (t: number): string => t > 0.6 ? '#030C1A' : '#8ABFCC',
+};
+
+const WARM = {
+  bg:          '#F2E8D9',
+  surface:     '#EAD9C4',
+  border:      '#DCCCB0',
+  borderInner: '#D0BFA0',
+  borderRow:   '#CDB898',
+  accent:      '#C14830',
+  accentDim:   'rgba(193,72,48,0.10)',
+  accentGlow:  '#8C3020',
+  text:        '#4A2010',
+  textBrand:   '#5A3020',
+  textActive:  '#D06040',
+  textMid:     '#7A5038',
+  textSub:     '#9A7050',
+  textLabel:   '#A07850',
+  textDim:     '#C4A880',
+  textDimmer:  '#D4BC98',
+  stripe:      'linear-gradient(to right, #C14830 0%, #8C3020 55%, transparent 100%)',
+  cellText:    (t: number): string => t > 0.5 ? '#F2E8D9' : '#3A1A0A',
+};
+
+type Theme = typeof DARK;
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
 function lerp(a: number, b: number, t: number) {
   return a + (b - a) * t;
 }
 
-// Navy → electric teal gradient
-function cellColor(t: number): string {
+function cellColor(t: number, warm: boolean): string {
+  if (warm) {
+    if (t <= 0) return WARM.surface;
+    const h = Math.round(lerp(35, 8, t));
+    const s = Math.round(lerp(35, 72, t));
+    const l = Math.round(lerp(88, 28, t));
+    return `hsl(${h}, ${s}%, ${l}%)`;
+  }
   if (t <= 0) return '#030C1A';
   const h = Math.round(lerp(215, 168, t));
   const s = Math.round(lerp(65, 90, t));
@@ -49,20 +102,20 @@ const FAILURE_ORDER: FailureType[] = ['acronym', 'drift', 'crossdept', 'conflati
 
 // ─── Sub-components ──────────────────────────────────────────────────────────
 
-function StatBadge({ label, value }: { label: string; value: string }) {
+function StatBadge({ label, value, C }: { label: string; value: string; C: Theme }) {
   return (
     <div style={{
       display: 'flex', flexDirection: 'column', alignItems: 'center',
-      padding: '6px 18px', borderLeft: '1px solid #0C1E38',
+      padding: '6px 18px', borderLeft: `1px solid ${C.border}`,
     }}>
       <span style={{
-        fontSize: 19, fontWeight: 700, color: '#1ED8C0',
+        fontSize: 19, fontWeight: 700, color: C.accent,
         fontFamily: 'var(--font-mono)', lineHeight: 1.1, letterSpacing: '-0.02em',
       }}>
         {value}
       </span>
       <span style={{
-        fontSize: 9, color: '#3D6880', textTransform: 'uppercase',
+        fontSize: 9, color: C.textLabel, textTransform: 'uppercase',
         letterSpacing: '0.1em', fontWeight: 700, marginTop: 2,
       }}>
         {label}
@@ -72,9 +125,9 @@ function StatBadge({ label, value }: { label: string; value: string }) {
 }
 
 function Toggle({
-  checked, onChange, label, sub,
+  checked, onChange, label, sub, C,
 }: {
-  checked: boolean; onChange: (v: boolean) => void; label: string; sub: string;
+  checked: boolean; onChange: (v: boolean) => void; label: string; sub: string; C: Theme;
 }) {
   return (
     <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', userSelect: 'none' }}>
@@ -85,33 +138,34 @@ function Toggle({
         style={{
           position: 'relative', width: 34, height: 18, borderRadius: 9999,
           flexShrink: 0, outline: 'none', cursor: 'pointer', transition: 'all 0.18s',
-          border: `1px solid ${checked ? '#1ED8C0' : '#0C1E38'}`,
-          background: checked ? 'rgba(30,216,192,0.1)' : 'transparent',
+          border: `1px solid ${checked ? C.accent : C.textSub}`,
+          background: checked ? C.accentDim : 'transparent',
         }}
       >
         <span style={{
           position: 'absolute', top: '50%', transform: 'translateY(-50%)',
           left: checked ? 16 : 2, width: 12, height: 12, borderRadius: '50%',
-          background: checked ? '#1ED8C0' : '#142840',
+          background: checked ? C.accent : C.textSub,
           transition: 'left 0.18s, background 0.18s',
         }} />
       </button>
       <div>
-        <div style={{ fontSize: 12, color: checked ? '#8AB8CC' : '#5A8AA0', fontWeight: 500, lineHeight: 1.3 }}>
+        <div style={{ fontSize: 12, color: checked ? C.textActive : C.textSub, fontWeight: 500, lineHeight: 1.3 }}>
           {label}
         </div>
-        <div style={{ fontSize: 10, color: '#3D6880', lineHeight: 1.2 }}>{sub}</div>
+        <div style={{ fontSize: 10, color: C.textLabel, lineHeight: 1.2 }}>{sub}</div>
       </div>
     </label>
   );
 }
 
 function FailureCard({
-  type, examples, onHighlight,
+  type, examples, onHighlight, C,
 }: {
   type: FailureType;
   examples: Array<{ label: string; ri: number; ci: number; score: number }>;
   onHighlight: (pos: [number, number]) => void;
+  C: Theme;
 }) {
   const color = FAILURE_COLORS[type];
   const shortLabel = FAILURE_LABELS[type].split(' — ')[0];
@@ -135,7 +189,7 @@ function FailureCard({
           {shortLabel}
         </span>
       </div>
-      <p style={{ fontSize: 10, color: '#4A6D8A', margin: '0 0 8px', lineHeight: 1.6 }}>
+      <p style={{ fontSize: 10, color: C.textSub, margin: '0 0 8px', lineHeight: 1.6 }}>
         {FAILURE_DESCRIPTIONS[type]}
       </p>
       {examples.length > 0 && (
@@ -176,11 +230,6 @@ function FailureDot({ type }: { type: FailureType }) {
   );
 }
 
-const SL: React.CSSProperties = {
-  fontSize: 9, color: '#3D6880', fontWeight: 700,
-  textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 10,
-};
-
 // ─── Main page ───────────────────────────────────────────────────────────────
 
 export default function Home() {
@@ -192,6 +241,20 @@ export default function Home() {
   const [scatterHovered, setScatterHovered] = useState<number | null>(null);
   const [gravityHovered, setGravityHovered] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<'failures' | 'gravity' | 'map'>('failures');
+  const [warm, setWarm] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+
+  const C = warm ? WARM : DARK;
+
+  const SL: React.CSSProperties = {
+    fontSize: 9, color: C.textLabel, fontWeight: 700,
+    textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 10,
+  };
+
+  useEffect(() => {
+    document.body.style.background = C.bg;
+    document.body.style.color = C.text;
+  }, [C.bg, C.text]);
 
   const uniqueLibrary = useMemo(() => {
     const map = new Map<string, JobTitle>();
@@ -369,63 +432,76 @@ export default function Home() {
   return (
     <div style={{
       display: 'flex', flexDirection: 'column',
-      height: '100vh', background: '#030C1A', overflow: 'hidden',
+      height: '100vh', background: C.bg, overflow: 'hidden',
       fontFamily: 'var(--font-syne), system-ui, sans-serif',
+      transition: 'background 0.25s, color 0.25s',
     }}>
 
       {/* Top accent stripe */}
       <div style={{
         height: 2, flexShrink: 0,
-        background: 'linear-gradient(to right, #1ED8C0 0%, #0A6A80 55%, transparent 100%)',
+        background: C.stripe,
+        transition: 'background 0.25s',
       }} />
 
       {/* Header */}
       <header style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '13px 24px', borderBottom: '1px solid #0C1E38', flexShrink: 0,
+        padding: '13px 24px', borderBottom: `1px solid ${C.border}`, flexShrink: 0,
         gap: 16,
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
           {/* Logo mark */}
           <svg width={24} height={28} viewBox="0 0 24 28" fill="none">
             <polygon points="12,2 22,7.5 22,20.5 12,26 2,20.5 2,7.5"
-              stroke="#1ED8C0" strokeWidth={1.5} fill="rgba(30,216,192,0.06)" />
+              stroke={C.accent} strokeWidth={1.5} fill={C.accentDim} />
             <polygon points="12,8 17,11 17,17 12,20 7,17 7,11"
-              stroke="#1ED8C0" strokeWidth={0.75} fill="rgba(30,216,192,0.1)" strokeOpacity={0.5} />
-            <circle cx={12} cy={14} r={2} fill="#1ED8C0" fillOpacity={0.9} />
+              stroke={C.accent} strokeWidth={0.75} fill={C.accentDim} strokeOpacity={0.5} />
+            <circle cx={12} cy={14} r={2} fill={C.accent} fillOpacity={0.9} />
           </svg>
           <div>
             <div style={{ display: 'flex', alignItems: 'baseline' }}>
               <span style={{
                 fontSize: 15, fontWeight: 800, letterSpacing: '0.14em',
-                textTransform: 'uppercase', color: '#B8D4E8',
+                textTransform: 'uppercase', color: C.textBrand,
               }}>Embedding&nbsp;</span>
               <span style={{
                 fontSize: 15, fontWeight: 800, letterSpacing: '0.14em',
-                textTransform: 'uppercase', color: '#1ED8C0',
+                textTransform: 'uppercase', color: C.accent,
               }}>Failure&nbsp;</span>
               <span style={{
                 fontSize: 15, fontWeight: 800, letterSpacing: '0.14em',
-                textTransform: 'uppercase', color: '#B8D4E8',
+                textTransform: 'uppercase', color: C.textBrand,
               }}>Lab</span>
             </div>
-            <div style={{ fontSize: 10, color: '#3D6880', letterSpacing: '0.05em', marginTop: 2 }}>
+            <div style={{ fontSize: 10, color: C.textLabel, letterSpacing: '0.05em', marginTop: 2 }}>
               text-embedding-3-small · cosine similarity · semantic failure diagnostics
             </div>
           </div>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'stretch', borderLeft: '1px solid #0C1E38' }}>
-          <StatBadge label="titles"      value={uniqueLibrary.length > 0 ? String(uniqueLibrary.length) : '—'} />
-          <StatBadge label="dimensions"  value="1536" />
-          <StatBadge label="anomalies"   value={uniqueLibrary.length > 0 ? String(totalAnomalies) : '—'} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          {/* Theme toggle */}
+          <Toggle
+            checked={warm}
+            onChange={setWarm}
+            label="Warm"
+            sub="Document palette"
+            C={C}
+          />
+
+          <div style={{ display: 'flex', alignItems: 'stretch', borderLeft: `1px solid ${C.border}` }}>
+            <StatBadge label="titles"      value={uniqueLibrary.length > 0 ? String(uniqueLibrary.length) : '—'} C={C} />
+            <StatBadge label="dimensions"  value="1536" C={C} />
+            <StatBadge label="anomalies"   value={uniqueLibrary.length > 0 ? String(totalAnomalies) : '—'} C={C} />
+          </div>
         </div>
       </header>
 
       {/* Tab nav */}
       <div style={{
-        display: 'flex', borderBottom: '1px solid #0C1E38',
-        flexShrink: 0, background: '#020A16', paddingLeft: 24,
+        display: 'flex', borderBottom: `1px solid ${C.border}`,
+        flexShrink: 0, background: C.surface, paddingLeft: 24,
       }}>
         {(['failures', 'gravity', 'map'] as const).map((tab, i) => (
           <button
@@ -433,8 +509,8 @@ export default function Home() {
             onClick={() => setActiveTab(tab)}
             style={{
               padding: '11px 20px', background: 'none', border: 'none', cursor: 'pointer',
-              borderBottom: activeTab === tab ? '2px solid #1ED8C0' : '2px solid transparent',
-              color: activeTab === tab ? '#8AB8CC' : '#3D6880',
+              borderBottom: activeTab === tab ? `2px solid ${C.accent}` : '2px solid transparent',
+              color: activeTab === tab ? C.textActive : C.textLabel,
               fontSize: 10, fontWeight: 700, textTransform: 'uppercase',
               letterSpacing: '0.12em', transition: 'color 0.15s',
               fontFamily: 'var(--font-syne)',
@@ -453,10 +529,38 @@ export default function Home() {
           <>
             {/* Sidebar */}
             <div style={{
-              width: 310, flexShrink: 0, borderRight: '1px solid #0C1E38',
-              overflowY: 'auto', padding: '18px 16px',
-              display: 'flex', flexDirection: 'column', gap: 22,
+              width: sidebarOpen ? 310 : 28, flexShrink: 0,
+              borderRight: `1px solid ${C.border}`,
+              overflowY: sidebarOpen ? 'auto' : 'hidden',
+              overflowX: 'hidden',
+              background: C.bg,
+              transition: 'width 0.22s ease',
+              position: 'relative',
             }}>
+              {/* Collapse toggle */}
+              <button
+                onClick={() => setSidebarOpen(o => !o)}
+                title={sidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}
+                style={{
+                  position: 'absolute', top: 14, right: 6,
+                  width: 18, height: 18, borderRadius: 3,
+                  border: `1px solid ${C.border}`,
+                  background: C.surface, color: C.textLabel,
+                  cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 10, lineHeight: 1, zIndex: 10, flexShrink: 0,
+                  transition: 'color 0.15s, border-color 0.15s',
+                }}
+              >
+                {sidebarOpen ? '‹' : '›'}
+              </button>
+              <div style={{
+                opacity: sidebarOpen ? 1 : 0,
+                transition: 'opacity 0.15s ease',
+                pointerEvents: sidebarOpen ? 'auto' : 'none',
+                padding: '18px 16px',
+                display: 'flex', flexDirection: 'column', gap: 22,
+                minWidth: 278,
+              }}>
               <section>
                 <div style={SL}>Partition Controls</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -465,12 +569,14 @@ export default function Home() {
                     onChange={setSeniorityPartition}
                     label="Seniority partition"
                     sub="Zero cross-level similarities"
+                    C={C}
                   />
                   <Toggle
                     checked={deptPartition}
                     onChange={setDeptPartition}
                     label="Department partition"
                     sub="Zero cross-dept similarities"
+                    C={C}
                   />
                 </div>
               </section>
@@ -479,15 +585,15 @@ export default function Home() {
                 <section>
                   <div style={SL}>Cosine Similarity Scale</div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ fontSize: 9, color: '#4A7090', fontFamily: 'var(--font-mono)' }}>
+                    <span style={{ fontSize: 9, color: C.textSub, fontFamily: 'var(--font-mono)' }}>
                       {minScore.toFixed(2)}
                     </span>
                     <div style={{
                       flex: 1, height: 5, borderRadius: 3,
-                      background: `linear-gradient(to right, ${cellColor(0.04)}, ${cellColor(0.5)}, ${cellColor(1)})`,
-                      border: '1px solid #0C1E38',
+                      background: `linear-gradient(to right, ${cellColor(0.04, warm)}, ${cellColor(0.5, warm)}, ${cellColor(1, warm)})`,
+                      border: `1px solid ${C.border}`,
                     }} />
-                    <span style={{ fontSize: 9, color: '#1ED8C0', fontFamily: 'var(--font-mono)' }}>
+                    <span style={{ fontSize: 9, color: C.accent, fontFamily: 'var(--font-mono)' }}>
                       {maxScore.toFixed(2)}
                     </span>
                   </div>
@@ -504,26 +610,28 @@ export default function Home() {
                         type={type}
                         examples={insightExamples[type] ?? []}
                         onHighlight={setHighlighted}
+                        C={C}
                       />
                     ))}
                   </div>
                 </section>
               )}
+              </div>
             </div>
 
             {/* Matrix */}
             {library.length > 0 ? (
-              <div style={{ flex: 1, overflow: 'auto', background: '#020A16' }}>
+              <div style={{ flex: 1, overflow: 'auto', background: C.surface }}>
                 <table style={{ borderCollapse: 'separate', borderSpacing: 0 }}>
                   <thead>
                     <tr>
                       <th style={{
                         position: 'sticky', top: 0, left: 0, zIndex: 30,
-                        background: '#020A16',
-                        borderBottom: '1px solid #0C1E38', borderRight: '1px solid #0E2444',
+                        background: C.surface,
+                        borderBottom: `1px solid ${C.border}`, borderRight: `1px solid ${C.borderRow}`,
                         minWidth: 220, padding: '0 14px', textAlign: 'left',
                         fontSize: 9, fontWeight: 700, textTransform: 'uppercase',
-                        letterSpacing: '0.12em', color: '#3D6880',
+                        letterSpacing: '0.12em', color: C.textLabel,
                         fontFamily: 'var(--font-syne)', height: 40,
                       }}>
                         Role
@@ -533,9 +641,9 @@ export default function Home() {
                           key={i}
                           style={{
                             position: 'sticky', top: 0, zIndex: 20,
-                            background: '#020A16',
-                            borderBottom: '1px solid #0C1E38',
-                            borderRight: '1px solid #09182C',
+                            background: C.surface,
+                            borderBottom: `1px solid ${C.border}`,
+                            borderRight: `1px solid ${C.borderInner}`,
                             width: 36, minWidth: 36,
                             verticalAlign: 'bottom', padding: 0,
                           }}
@@ -555,7 +663,7 @@ export default function Home() {
                             paddingTop: 4, paddingBottom: 12,
                             paddingLeft: 8, paddingRight: 8,
                             whiteSpace: 'nowrap',
-                            fontSize: 9.5, fontWeight: 600, color: '#9ACFDF',
+                            fontSize: 9.5, fontWeight: 600, color: C.text,
                             letterSpacing: '0.02em',
                           }}>
                             {title}
@@ -569,18 +677,18 @@ export default function Home() {
                       <tr key={ri}>
                         <th style={{
                           position: 'sticky', left: 0, zIndex: 10,
-                          background: '#020A16',
-                          borderBottom: '1px solid #09182C',
-                          borderRight: '1px solid #0E2444',
+                          background: C.surface,
+                          borderBottom: `1px solid ${C.borderInner}`,
+                          borderRight: `1px solid ${C.borderRow}`,
                           paddingLeft: 14, paddingRight: 10,
                           textAlign: 'left', height: 30,
-                          fontSize: 11, fontWeight: 600, color: '#9ACFDF',
+                          fontSize: 11, fontWeight: 600, color: C.text,
                           whiteSpace: 'nowrap',
                         }}>
                           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                             <span style={{
                               width: 2.5, height: 13,
-                              background: DEPT_COLORS[uniqueLibrary[ri]?.department] ?? '#2D5070',
+                              background: DEPT_COLORS[uniqueLibrary[ri]?.department] ?? C.textSub,
                               borderRadius: 1, display: 'inline-block', flexShrink: 0, opacity: 0.75,
                             }} />
                             <span>{rowTitle}</span>
@@ -591,7 +699,7 @@ export default function Home() {
                         </th>
                         {scores[ri]?.map((score, ci) => {
                           const t = score > 0 ? normalize(score) : 0;
-                          const bg = score > 0 ? cellColor(t) : '#020A16';
+                          const bg = score > 0 ? cellColor(t, warm) : C.surface;
                           const isHov = hovered?.[0] === ri && hovered?.[1] === ci;
                           const isHighlighted = highlighted?.[0] === ri && highlighted?.[1] === ci;
                           const cellFailure = cellFlags.get(`${ri},${ci}`);
@@ -603,13 +711,13 @@ export default function Home() {
                                 backgroundColor: bg,
                                 width: 36, height: 30,
                                 textAlign: 'center', verticalAlign: 'middle',
-                                borderBottom: '1px solid rgba(9,24,44,0.9)',
-                                borderRight: '1px solid rgba(9,24,44,0.9)',
+                                borderBottom: `1px solid ${C.borderInner}`,
+                                borderRight: `1px solid ${C.borderInner}`,
                                 cursor: 'default',
                                 transition: 'filter 0.08s',
                                 filter: isHov ? 'brightness(1.28)' : undefined,
                                 outline: isHighlighted
-                                  ? '2px solid #C0D8EC'
+                                  ? `2px solid ${C.text}`
                                   : cellFailure
                                   ? `2px solid ${FAILURE_COLORS[cellFailure]}`
                                   : undefined,
@@ -624,7 +732,7 @@ export default function Home() {
                               {score > 0 && (
                                 <span style={{
                                   fontSize: 7.5, fontWeight: 700,
-                                  color: t > 0.6 ? '#030C1A' : '#8ABFCC',
+                                  color: C.cellText(t),
                                   userSelect: 'none',
                                   fontFamily: 'var(--font-mono)',
                                 }}>
@@ -642,7 +750,8 @@ export default function Home() {
             ) : (
               <div style={{
                 flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                color: '#3D6880', fontSize: 12, fontFamily: 'var(--font-mono)',
+                color: C.textLabel, fontSize: 12, fontFamily: 'var(--font-mono)',
+                background: C.surface,
               }}>
                 Loading embeddings…
               </div>
@@ -652,13 +761,13 @@ export default function Home() {
 
         {/* ── SENIORITY GRAVITY ─────────────────────────────────────────── */}
         {activeTab === 'gravity' && gravityData && (
-          <div style={{ flex: 1, overflow: 'auto', padding: '24px 28px' }}>
+          <div style={{ flex: 1, overflow: 'auto', padding: '24px 28px', background: C.bg }}>
             <div style={{ maxWidth: 960, margin: '0 auto' }}>
               <div style={{ marginBottom: 20, maxWidth: 620 }}>
-                <p style={{ margin: '0 0 8px', fontSize: 14, color: '#6A94B0', lineHeight: 1.7 }}>
+                <p style={{ margin: '0 0 8px', fontSize: 14, color: C.textMid, lineHeight: 1.7 }}>
                   Titles orbit their seniority ring. Edges connect pairs with cosine similarity ≥ {gravityData.THRESHOLD.toFixed(2)}.
                 </p>
-                <p style={{ margin: 0, fontSize: 12, color: '#4A7090', lineHeight: 1.7 }}>
+                <p style={{ margin: 0, fontSize: 12, color: C.textSub, lineHeight: 1.7 }}>
                   <span style={{ color: FAILURE_COLORS.crossdept }}>Coral edges</span> are cross-department false positives —
                   the model treats seniority tokens like <em>VP</em> as gravitational anchors, pulling unrelated departments
                   into the same orbit. <span style={{ color: FAILURE_COLORS.conflation }}>Purple edges</span> mark seniority
@@ -667,7 +776,7 @@ export default function Home() {
               </div>
 
               <div style={{
-                borderRadius: 6, border: '1px solid #0C1E38', background: '#020A16',
+                borderRadius: 6, border: `1px solid ${C.border}`, background: C.surface,
                 padding: '20px', display: 'flex', gap: 24, alignItems: 'flex-start',
               }}>
                 <svg
@@ -713,7 +822,7 @@ export default function Home() {
                     const t = (score - gravityData.THRESHOLD) / (1 - gravityData.THRESHOLD);
                     const opacity = isOther ? 0.02 : isAdj ? 0.85 : t * 0.38 + 0.13;
                     const sw = isAdj ? 2 : t * 2 + 0.5;
-                    const color = type ? FAILURE_COLORS[type] : '#1E3A52';
+                    const color = type ? FAILURE_COLORS[type] : C.borderRow;
                     return (
                       <line
                         key={`${ri}-${ci}`}
@@ -727,7 +836,7 @@ export default function Home() {
                     const pos = gravityData.positions[i];
                     if (!pos) return null;
                     const [x, y] = pos;
-                    const color = DEPT_COLORS[title.department] ?? '#4A6D8A';
+                    const color = DEPT_COLORS[title.department] ?? C.textSub;
                     const isHov = gravityHovered === i;
                     const adjEdge = gravityHovered !== null
                       ? gravityData.edges.find(
@@ -756,24 +865,24 @@ export default function Home() {
                           cx={x} cy={y} r={isHov ? 6 : 4.5}
                           fill={color}
                           fillOpacity={dimmed ? 0.1 : 0.82}
-                          stroke={isHov ? '#C0D8EC' : isAdj ? color : 'none'}
+                          stroke={isHov ? C.text : isAdj ? color : 'none'}
                           strokeWidth={isHov ? 1.5 : 1}
                         />
                         {(isHov || isAdj) ? (
                           <text
-                            x={lx} y={ly} fontSize={11} fill="#4A6D8A"
+                            x={lx} y={ly} fontSize={11} fill={C.textSub}
                             textAnchor={anchor} dominantBaseline="middle"
                             style={{ pointerEvents: 'none', userSelect: 'none' }}
                           >
                             {isHov ? (
                               <>
                                 <tspan>{title.rawTitle}</tspan>
-                                <tspan x={lx} dy={14} fontSize={9} fill="#1E3A52">↓ similarity from here</tspan>
+                                <tspan x={lx} dy={14} fontSize={9} fill={C.textLabel}>↓ similarity from here</tspan>
                               </>
                             ) : (
                               <>
                                 <tspan>{title.rawTitle}</tspan>
-                                <tspan fill="#1E3A52">{adjEdge ? ` · ${adjEdge.score.toFixed(2)}` : ''}</tspan>
+                                <tspan fill={C.textLabel}>{adjEdge ? ` · ${adjEdge.score.toFixed(2)}` : ''}</tspan>
                               </>
                             )}
                           </text>
@@ -792,7 +901,7 @@ export default function Home() {
                     {Object.entries(DEPT_COLORS).map(([dept, color]) => (
                       <div key={dept} style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 5 }}>
                         <span style={{ width: 6, height: 6, borderRadius: '50%', background: color, flexShrink: 0, display: 'inline-block' }} />
-                        <span style={{ fontSize: 10, color: '#5A8AA0' }}>{dept}</span>
+                        <span style={{ fontSize: 10, color: C.textSub }}>{dept}</span>
                       </div>
                     ))}
                   </div>
@@ -803,16 +912,16 @@ export default function Home() {
                         <svg width={18} height={6} style={{ flexShrink: 0 }}>
                           <line x1={0} y1={3} x2={18} y2={3} stroke={FAILURE_COLORS[type]} strokeWidth={1.5} />
                         </svg>
-                        <span style={{ fontSize: 10, color: '#5A8AA0' }}>
+                        <span style={{ fontSize: 10, color: C.textSub }}>
                           {type === 'crossdept' ? 'Cross-dept' : 'Conflation'}
                         </span>
                       </div>
                     ))}
                     <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
                       <svg width={18} height={6} style={{ flexShrink: 0 }}>
-                        <line x1={0} y1={3} x2={18} y2={3} stroke="#142840" strokeWidth={1} />
+                        <line x1={0} y1={3} x2={18} y2={3} stroke={C.borderRow} strokeWidth={1} />
                       </svg>
-                      <span style={{ fontSize: 10, color: '#5A8AA0' }}>Normal</span>
+                      <span style={{ fontSize: 10, color: C.textSub }}>Normal</span>
                     </div>
                   </div>
                   <div>
@@ -824,7 +933,7 @@ export default function Home() {
                             strokeWidth={1} strokeDasharray={level === 1 ? undefined : '2 2'} />
                         </svg>
                         <span style={{ fontSize: 10, color: RING_COLORS[level], fontWeight: 600 }}>L{level}</span>
-                        <span style={{ fontSize: 10, color: '#3D6880' }}>{gravityData.LEVEL_LABELS[level]}</span>
+                        <span style={{ fontSize: 10, color: C.textLabel }}>{gravityData.LEVEL_LABELS[level]}</span>
                       </div>
                     ))}
                   </div>
@@ -836,14 +945,14 @@ export default function Home() {
 
         {/* ── EMBEDDING MAP ─────────────────────────────────────────────── */}
         {activeTab === 'map' && scatterData && (
-          <div style={{ flex: 1, overflow: 'auto', padding: '24px 28px' }}>
+          <div style={{ flex: 1, overflow: 'auto', padding: '24px 28px', background: C.bg }}>
             <div style={{ maxWidth: 840, margin: '0 auto' }}>
               <div style={{ marginBottom: 20, maxWidth: 620 }}>
-                <p style={{ margin: '0 0 8px', fontSize: 14, color: '#6A94B0', lineHeight: 1.7 }}>
+                <p style={{ margin: '0 0 8px', fontSize: 14, color: C.textMid, lineHeight: 1.7 }}>
                   Each dot is a job title, positioned by what the model &ldquo;thinks&rdquo; it means.
                   Dots that land close together look similar to the model.
                 </p>
-                <p style={{ margin: 0, fontSize: 12, color: '#4A7090', lineHeight: 1.7 }}>
+                <p style={{ margin: 0, fontSize: 12, color: C.textSub, lineHeight: 1.7 }}>
                   Notice how VP titles from different departments cluster together — the model treats
                   seniority level as the dominant signal, overriding department function. Dot size reflects
                   seniority level. Hover any dot to see the title.
@@ -851,7 +960,7 @@ export default function Home() {
               </div>
 
               <div style={{
-                borderRadius: 6, border: '1px solid #0C1E38', background: '#020A16',
+                borderRadius: 6, border: `1px solid ${C.border}`, background: C.surface,
                 padding: '20px', display: 'flex', gap: 24, alignItems: 'flex-start',
               }}>
                 <svg
@@ -862,13 +971,13 @@ export default function Home() {
                     <line
                       x1={scatterData.pts[highlighted[0]][0]} y1={scatterData.pts[highlighted[0]][1]}
                       x2={scatterData.pts[highlighted[1]][0]} y2={scatterData.pts[highlighted[1]][1]}
-                      stroke="#4A6D8A" strokeWidth={1} strokeOpacity={0.5} strokeDasharray="4 3"
+                      stroke={C.textSub} strokeWidth={1} strokeOpacity={0.5} strokeDasharray="4 3"
                     />
                   )}
                   {uniqueLibrary.map((title, i) => {
                     const [cx, cy] = scatterData.pts[i];
                     const r = title.seniority * 2.5 + 2.5;
-                    const color = DEPT_COLORS[title.department] ?? '#4A6D8A';
+                    const color = DEPT_COLORS[title.department] ?? C.textSub;
                     const isHighlighted = highlighted !== null && (highlighted[0] === i || highlighted[1] === i);
                     const isHov = scatterHovered === i;
                     return (
@@ -877,7 +986,7 @@ export default function Home() {
                         cx={cx} cy={cy} r={r}
                         fill={color}
                         fillOpacity={isHov || isHighlighted ? 0.9 : 0.55}
-                        stroke={isHighlighted ? '#C0D8EC' : isHov ? color : 'none'}
+                        stroke={isHighlighted ? C.text : isHov ? color : 'none'}
                         strokeWidth={isHighlighted ? 1.5 : 1}
                         style={{ cursor: 'default' }}
                         onMouseEnter={() => setScatterHovered(i)}
@@ -895,7 +1004,7 @@ export default function Home() {
                     {Object.entries(DEPT_COLORS).map(([dept, color]) => (
                       <div key={dept} style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 5 }}>
                         <span style={{ width: 6, height: 6, borderRadius: '50%', background: color, flexShrink: 0, display: 'inline-block' }} />
-                        <span style={{ fontSize: 10, color: '#5A8AA0' }}>{dept}</span>
+                        <span style={{ fontSize: 10, color: C.textSub }}>{dept}</span>
                       </div>
                     ))}
                   </div>
@@ -904,9 +1013,9 @@ export default function Home() {
                     {[1, 2, 3, 4].map(s => (
                       <div key={s} style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 5 }}>
                         <svg width={20} height={20} style={{ flexShrink: 0 }}>
-                          <circle cx={10} cy={10} r={s * 2.5 + 2.5} fill="#4A6D8A" fillOpacity={0.55} />
+                          <circle cx={10} cy={10} r={s * 2.5 + 2.5} fill={C.textSub} fillOpacity={0.55} />
                         </svg>
-                        <span style={{ fontSize: 10, color: '#5A8AA0' }}>Level {s}</span>
+                        <span style={{ fontSize: 10, color: C.textSub }}>Level {s}</span>
                       </div>
                     ))}
                   </div>

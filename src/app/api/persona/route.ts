@@ -39,8 +39,7 @@ export async function POST(req: NextRequest) {
         const vector = Array.from(embedding.data[0].embedding);
 
         const library = await readLibrary();
-        const newId = library.length > 0 ? Math.max(...library.map((p: any) => p.id)) + 1 : 1;
-        const newPersona = { id: newId, rawTitle, department, seniority, vector };
+        const newPersona = { rawTitle, department, seniority, vector };
 
         library.push(newPersona);
         await writeLibrary(library);

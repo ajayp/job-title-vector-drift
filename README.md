@@ -6,13 +6,15 @@
 
 Job titles are self-reported, unstructured, and inconsistent by nature. Whether you're matching candidates on LinkedIn, segmenting contacts in a CRM, or parsing resumes — the same role arrives written a dozen different ways. `VP of MarOps`, `Head of Marketing Operations`, and `Senior Marketing Operations Manager` could all describe the same person at the same seniority level.
 
-The obvious fix is a standard taxonomy — but frameworks like O*NET are too slow to reflect how the market actually evolves. Roles like `GTM Engineer` or `Revenue Architect` don't exist in any official classification yet, which means taxonomy-based normalization has a permanent blind spot for emerging titles.
+The obvious fix is a standard taxonomy but frameworks like O*NET are too slow to reflect how the market actually evolves. Roles like `GTM Engineer` or `Revenue Architect` don't exist in any official classification yet, which means taxonomy-based normalization has a permanent blind spot for emerging titles.
 
-Embedding-based similarity is the natural alternative — but it doesn't work on raw titles either. Models like `text-embedding-3-small` encode surface form as strongly as meaning, so `CRO` and `Chief Revenue Officer` land in different parts of the vector space, and `VP of Sales` scores closer to `VP of Marketing` than to `Head of Revenue`. Normalization has to happen before embedding, not after. This project stress-tests that assumption against 46 job titles and catalogues the five systematic failure modes — with exact cosine scores — that corrupt any downstream classifier or matching system relying on raw embeddings.
+Embedding-based similarity is the natural alternative but it doesn't work on raw titles either. Models like `text-embedding-3-small` encode surface form as strongly as meaning, so `CRO` and `Chief Revenue Officer` land in different parts of the vector space, and `VP of Sales` scores closer to `VP of Marketing` than to `Head of Revenue`. 
 
-<img width="567" height="455" alt="Network graph — each node is a title, edge thickness scales with cosine similarity" src="screenshots/network-graph.jpg" /> <img width="691" height="297" alt="image" src="https://github.com/user-attachments/assets/cd1dea8e-f294-46b5-820e-a24158097c1c" />
+Embeddings can't fix broken data. Normalization has to happen before embedding, not after. This project stress-tests that assumption against 46 job titles and catalogues the five systematic failure modes with exact cosine scores that corrupt any downstream classifier or matching system relying on raw embeddings.
 
+<img width="567" height="455" alt="Network graph — each node is a title, edge thickness scales with cosine similarity" src="screenshots/network-graph.jpg" /> 
 
+<img width="1673" height="506" alt="image" src="https://github.com/user-attachments/assets/0823d71a-30a2-4e56-b590-3840e7d83969" />
 
 *Each node is a title, edge thickness scales with cosine similarity*
 

@@ -174,7 +174,7 @@ npm run seed    # rebuild library.json from cfg/titles.json; only calls OpenAI f
 npm run clear   # wipe all vector data from library.json (useful before a full re-embed)
 ```
 
-`npm run seed` is a smart upsert — it carries over existing vectors for titles that haven't changed, so re-running it after adding a single title only makes one API call.
+`npm run seed` is a upsert — it carries over existing vectors for titles that haven't changed, so re-running it after adding a single title only makes one API call.
 
 ### Background
 
@@ -204,5 +204,5 @@ $$\text{similarity} = \frac{A \cdot B}{\|A\| \times \|B\|}$$
 
 - **Framework:** Next.js 14 (App Router)
 - **Language:** TypeScript
-- **Embeddings:** OpenAI `text-embedding-3-small` via REST API
+- **Embeddings:** OpenAI `text-embedding-3-small`  
 - **Analytics:** custom cosine similarity + PCA — no ML library dependency

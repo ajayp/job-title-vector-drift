@@ -206,3 +206,7 @@ $$\text{similarity} = \frac{A \cdot B}{\|A\| \times \|B\|}$$
 - **Language:** TypeScript
 - **Embeddings:** OpenAI `text-embedding-3-small`  
 - **Analytics:** custom cosine similarity + PCA — no ML library dependency
+
+### Similarity Heatmap Matrix
+
+<img alt="Heatmap matrix — pairwise cosine similarity between all job titles" src="screenshots/heatmap-matrix.jpg" />
